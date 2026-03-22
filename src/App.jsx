@@ -4,7 +4,7 @@ import { CashFlowPage } from './components/CashFlowPage'
 import { DashboardPage } from './components/DashboardPage'
 import { PlannerPage } from './components/PlannerPage'
 import { Sidebar } from './components/Sidebar'
-import { accountsSeed, cashFlowSeed } from './data/mockData'
+import { accountsSeed, cashFlowSeed, plannerGoalsSeed } from './data/mockData'
 
 const pages = {
   Dashboard: DashboardPage,
@@ -17,6 +17,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('Dashboard')
   const [accounts, setAccounts] = useState(accountsSeed)
   const [cashFlow, setCashFlow] = useState(cashFlowSeed)
+  const [goals, setGoals] = useState(plannerGoalsSeed)
 
   const CurrentPage = pages[currentPage]
 
@@ -26,8 +27,10 @@ export default function App() {
       setAccounts,
       cashFlow,
       setCashFlow,
+      goals,
+      setGoals,
     }),
-    [accounts, cashFlow],
+    [accounts, cashFlow, goals],
   )
 
   return (
