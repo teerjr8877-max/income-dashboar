@@ -4,8 +4,8 @@ export function Sidebar({ currentPage, onNavigate }) {
   return (
     <aside className="flex min-h-screen w-full max-w-xs flex-col border-r border-slate-800 bg-slate-950/90 px-6 py-8">
       <div>
-        <p className="text-sm uppercase tracking-[0.4em] text-brand-300">WealthOS</p>
-        <h1 className="mt-3 text-3xl font-semibold text-white">Personal Financial Operating System</h1>
+        <p className="text-sm uppercase tracking-[0.4em] text-brand-300">WealthOS V2</p>
+        <h1 className="mt-3 text-3xl font-semibold text-white">Household Wealth Operating System</h1>
       </div>
 
       <nav className="mt-10 space-y-2">
@@ -30,8 +30,10 @@ export function Sidebar({ currentPage, onNavigate }) {
       </nav>
 
       <div className="mt-auto rounded-3xl border border-brand-400/20 bg-brand-500/10 p-5 text-sm text-slate-200">
-        <p className="font-semibold text-white">Net worth runway</p>
-        <p className="mt-2 text-slate-300">Review allocation, income, and annual contribution targets in one workspace.</p>
+        <p className="font-semibold text-white">Household command center</p>
+        <p className="mt-2 text-slate-300">
+          Monitor net worth, contributions, cash flow, and household goals without leaving the premium WealthOS layout.
+        </p>
       </div>
     </aside>
   )
