@@ -268,18 +268,18 @@ export function groupAccountsByAccountType(accounts) {
 }
 
 export function groupIncomeByCategory(accounts) {
-  const map = new Map()
+  const displayCategories = ['Amplified Income', 'Alternative Income', 'Anchor', 'Growth', 'Cash', 'Other']
+  const map = new Map(displayCategories.map((category) => [category, 0]))
 
   accounts.forEach((account) => {
     account.holdings.forEach((holding) => {
-      const current = map.get(holding.category) ?? 0
-      map.set(holding.category, current + Number(holding.estimatedMonthlyIncome ?? 0))
+      const normalizedCategory = displayCategories.includes(holding.category) ? holding.category : 'Other'
+      const current = map.get(normalizedCategory) ?? 0
+      map.set(normalizedCategory, current + Number(holding.estimatedMonthlyIncome ?? 0))
     })
   })
 
-  return [...map.entries()]
-    .map(([category, amount]) => ({ category, amount }))
-    .sort((a, b) => b.amount - a.amount)
+  return displayCategories.map((category) => ({ category, amount: map.get(category) ?? 0 }))
 }
 
 export function buildNetWorthProjection(accounts, months = 12) {
