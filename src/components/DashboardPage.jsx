@@ -8,7 +8,7 @@ import {
   groupAccountsByAccountType,
   groupAccountsByOwner,
   groupIncomeByCategory,
-} from '../data/mockData'
+} from '../data/householdModel'
 import { Panel } from '../ui/Panel'
 import { StatCard } from '../ui/StatCard'
 
@@ -28,7 +28,7 @@ export function DashboardPage({ accounts = [] }) {
       title: 'Total household net worth',
       value: formatCurrency(metrics.totalHouseholdNetWorth),
       change: `${metrics.numberOfAccounts} accounts`,
-      detail: 'Combined balances across all JR, Lisa, and joint household accounts.',
+      detail: 'Combined balances across all JR, Lisa, and Joint household accounts.',
     },
     {
       title: 'Total invested assets',
@@ -148,7 +148,7 @@ export function DashboardPage({ accounts = [] }) {
             <div>
               <h3 className="text-2xl font-semibold text-white">Net worth by owner</h3>
               <p className="mt-2 text-sm text-slate-400">
-                JR, Lisa, and joint balances with ownership share of total household net worth.
+                JR, Lisa, and Joint balances with ownership share of total household net worth.
               </p>
             </div>
             <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -251,7 +251,7 @@ export function DashboardPage({ accounts = [] }) {
         <Panel>
           <h3 className="text-2xl font-semibold text-white">Owner contribution pacing</h3>
           <p className="mt-2 text-sm text-slate-400">
-            Monthly household funding mix across JR, Lisa, and joint accounts.
+            Monthly household funding mix across JR, Lisa, and Joint accounts.
           </p>
 
           <div className="mt-6 space-y-4">
@@ -311,7 +311,7 @@ export function DashboardPage({ accounts = [] }) {
                 const annualIncome = calculateAccountMonthlyIncome(account) * 12
                 return (
                   <tr key={account.id} className="transition-colors hover:bg-slate-900/80">
-                    <td className="px-5 py-4 text-white">{account.owner}</td>
+                    <td className="px-5 py-4 text-white">{account.ownerId}</td>
                     <td className="px-5 py-4">
                       <div>
                         <p className="font-semibold text-white">{account.accountName}</p>

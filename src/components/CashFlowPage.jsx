@@ -1,41 +1,21 @@
 import { useMemo } from 'react'
-import {
-  accountOwners,
-  cashFlowCategories,
-  formatCurrency,
-  summarizeCashFlowRows,
-} from '../data/mockData'
+import { cashFlowCategories, formatCurrency, ownerOptions, summarizeRows } from '../data/householdModel'
 import { Panel } from '../ui/Panel'
 
-export function CashFlowPage({ cashFlow, setCashFlow }) {
+export function CashFlowPage({ cashFlow, setCashFlowEntries }) {
   const incomeTotal = useMemo(() => cashFlow.income.reduce((sum, row) => sum + Number(row.amount), 0), [cashFlow.income])
   const expenseTotal = useMemo(() => cashFlow.expenses.reduce((sum, row) => sum + Number(row.amount), 0), [cashFlow.expenses])
   const monthlySurplus = incomeTotal - expenseTotal
   const annualSurplus = monthlySurplus * 12
-  const incomeByOwner = summarizeCashFlowRows(cashFlow.income, 'owner')
-  const expensesByCategory = summarizeCashFlowRows(cashFlow.expenses, 'category')
+  const incomeByOwner = summarizeRows(cashFlow.income, 'ownerId')
+  const expensesByCategory = summarizeRows(cashFlow.expenses, 'category')
 
   const addRow = (type) => {
-    setCashFlow((current) => ({
-      ...current,
-      [type]: [
-        ...current[type],
-        {
-          id: Date.now(),
-          label: '',
-          amount: 0,
-          owner: type === 'income' ? 'JR' : 'Joint',
-          category: cashFlowCategories[type][0],
-        },
-      ],
-    }))
+    setCashFlowEntries((current) => ([...current, { id: crypto.randomUUID(), label: '', amount: 0, ownerId: type === 'income' ? 'JR' : 'Joint', category: cashFlowCategories[type][0], type, updatedAt: new Date().toISOString() }]), `Added ${type} row`)
   }
 
   const updateRow = (type, id, field, value) => {
-    setCashFlow((current) => ({
-      ...current,
-      [type]: current[type].map((row) => (row.id === id ? { ...row, [field]: field === 'amount' ? Number(value) || 0 : value } : row)),
-    }))
+    setCashFlowEntries((current) => current.map((row) => (row.id === id ? { ...row, [field]: field === 'amount' ? Number(value) || 0 : value, updatedAt: new Date().toISOString() } : row)), `Updated ${type} row`)
   }
 
   return (
@@ -43,10 +23,7 @@ export function CashFlowPage({ cashFlow, setCashFlow }) {
       <div>
         <p className="text-sm uppercase tracking-[0.3em] text-brand-300">Household Movement</p>
         <h2 className="mt-2 text-4xl font-semibold text-white">CashFlow</h2>
-        <p className="mt-3 max-w-3xl text-slate-400">
-          Run household income and expense operations with owner assignment, category visibility, and a clear read on
-          monthly and annual surplus capacity.
-        </p>
+        <p className="mt-3 max-w-3xl text-slate-400">Run household income and expense operations with owner assignment, category visibility, and synced updates that travel across devices.</p>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-4">
@@ -98,15 +75,7 @@ function CashFlowTable({ title, rows, type, accent, onAddRow, onUpdateRow }) {
           <h3 className="text-xl font-semibold text-white">{title}</h3>
           <p className="mt-2 text-sm text-slate-400">Edit labels, owners, categories, and monthly values directly. Annualized values update automatically.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => onAddRow(type)}
-          className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-            accent === 'emerald'
-              ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300'
-              : 'border-rose-400/30 bg-rose-500/10 text-rose-200 hover:border-rose-300'
-          }`}
-        >
+        <button type="button" onClick={() => onAddRow(type)} className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${accent === 'emerald' ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:border-emerald-300' : 'border-rose-400/30 bg-rose-500/10 text-rose-200 hover:border-rose-300'}`}>
           Add row
         </button>
       </div>
@@ -116,23 +85,13 @@ function CashFlowTable({ title, rows, type, accent, onAddRow, onUpdateRow }) {
           <div key={row.id} className="grid gap-3 rounded-3xl border border-slate-800 bg-slate-950/60 p-4 md:grid-cols-2 xl:grid-cols-[1.2fr,0.7fr,0.7fr,0.8fr,0.8fr]">
             <label className="space-y-2 text-sm text-slate-300">
               <span>Label</span>
-              <input
-                value={row.label}
-                onChange={(event) => onUpdateRow(type, row.id, 'label', event.target.value)}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-400"
-              />
+              <input value={row.label} onChange={(event) => onUpdateRow(type, row.id, 'label', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-400" />
             </label>
-            <SelectField label="Owner" value={row.owner} options={accountOwners} onChange={(value) => onUpdateRow(type, row.id, 'owner', value)} />
+            <SelectField label="Owner" value={row.ownerId} options={ownerOptions} onChange={(value) => onUpdateRow(type, row.id, 'ownerId', value)} />
             <SelectField label="Category" value={row.category} options={cashFlowCategories[type]} onChange={(value) => onUpdateRow(type, row.id, 'category', value)} />
             <label className="space-y-2 text-sm text-slate-300">
               <span>Monthly</span>
-              <input
-                type="number"
-                step="0.01"
-                value={row.amount}
-                onChange={(event) => onUpdateRow(type, row.id, 'amount', event.target.value)}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-400"
-              />
+              <input type="number" step="0.01" value={row.amount} onChange={(event) => onUpdateRow(type, row.id, 'amount', event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-400" />
             </label>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Annualized</p>
@@ -173,16 +132,8 @@ function SelectField({ label, onChange, options, value }) {
   return (
     <label className="space-y-2 text-sm text-slate-300">
       <span>{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-400"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-brand-400">
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </label>
   )
