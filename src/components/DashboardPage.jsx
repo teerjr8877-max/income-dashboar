@@ -1,335 +1,411 @@
 import {
+  buildFireMetrics,
   buildNetWorthProjection,
-  calculateAccountMonthlyIncome,
   calculateHouseholdMetrics,
   formatCurrency,
   formatCurrencyPrecise,
   formatPercent,
   groupAccountsByAccountType,
   groupAccountsByOwner,
+  groupIncomeByAccount,
   groupIncomeByCategory,
 } from '../data/mockData'
 import { Panel } from '../ui/Panel'
 import { StatCard } from '../ui/StatCard'
+import { SectionNav } from './SectionNav'
+
+const dashboardSections = [
+  { id: 'dashboard-overview', label: 'Overview' },
+  { id: 'dashboard-income-engine', label: 'Income Engine' },
+  { id: 'dashboard-fire-tracker', label: 'FIRE Tracker' },
+  { id: 'dashboard-accounts-breakdown', label: 'Accounts Breakdown' },
+]
 
 export function DashboardPage({ accounts = [] }) {
   const metrics = calculateHouseholdMetrics(accounts)
   const ownerGroups = groupAccountsByOwner(accounts)
   const accountTypeGroups = groupAccountsByAccountType(accounts)
   const incomeByCategory = groupIncomeByCategory(accounts)
+  const incomeByAccount = groupIncomeByAccount(accounts)
+  const fireMetrics = buildFireMetrics(accounts)
   const projection = buildNetWorthProjection(accounts, 13)
   const maxProjection = Math.max(...projection.map((point) => point.netWorth), 1)
-  const currentProjection = projection[0]?.netWorth ?? 0
-  const projectedNetWorth = projection.at(-1)?.netWorth ?? 0
-  const projectedGrowth = currentProjection ? ((projectedNetWorth - currentProjection) / currentProjection) * 100 : 0
 
   const summaryCards = [
-    {
-      title: 'Total household net worth',
-      value: formatCurrency(metrics.totalHouseholdNetWorth),
-      change: `${metrics.numberOfAccounts} accounts`,
-      detail: 'Combined balances across all JR, Lisa, and joint household accounts.',
-    },
-    {
-      title: 'Total invested assets',
-      value: formatCurrency(metrics.totalInvestedAssets),
-      change: formatPercent((metrics.totalInvestedAssets / metrics.totalHouseholdNetWorth) * 100),
-      detail: 'Retirement and brokerage capital currently deployed in the household investment engine.',
-    },
-    {
-      title: 'Total cash / savings',
-      value: formatCurrency(metrics.totalCashSavings),
-      change: formatPercent((metrics.totalCashSavings / metrics.totalHouseholdNetWorth) * 100),
-      detail: 'Liquidity reserved in savings and cash accounts for stability, spending, and short-term goals.',
-    },
     {
       title: 'Monthly portfolio income',
       value: formatCurrencyPrecise(metrics.monthlyPortfolioIncome),
       change: formatCurrency(metrics.annualPortfolioIncome),
-      detail: 'Estimated dividends, interest, and yield income produced each month from current holdings.',
+      detail: 'Every holding rolls into a monthly income total, and annual income is always monthly × 12.',
+      tone: 'brand',
     },
     {
       title: 'Annual portfolio income',
       value: formatCurrency(metrics.annualPortfolioIncome),
       change: formatCurrencyPrecise(metrics.monthlyPortfolioIncome),
-      detail: 'Forward 12-month income estimate using each holding’s market value and annual yield.',
+      detail: 'Forward 12-month passive income based on market value and annual yield across the household portfolio.',
+      tone: 'emerald',
+    },
+    {
+      title: 'Weighted portfolio yield',
+      value: formatPercent(metrics.weightedPortfolioYield),
+      change: formatCurrency(metrics.holdingsMarketValue),
+      detail: 'Portfolio-wide yield derived from annual income divided by total holdings market value.',
+      tone: 'slate',
+    },
+    {
+      title: 'Total household net worth',
+      value: formatCurrency(metrics.totalHouseholdNetWorth),
+      change: `${metrics.numberOfAccounts} accounts`,
+      detail: 'Full household balance sheet across owner sleeves and account types.',
+      tone: 'slate',
+    },
+    {
+      title: 'Total invested assets',
+      value: formatCurrency(metrics.totalInvestedAssets),
+      change: formatPercent((metrics.totalInvestedAssets / metrics.totalHouseholdNetWorth) * 100),
+      detail: 'Investable capital deployed into taxable, retirement, and income-producing holdings.',
+      tone: 'slate',
     },
     {
       title: 'Monthly contributions',
       value: formatCurrency(metrics.monthlyHouseholdContributions),
       change: formatCurrency(metrics.monthlyHouseholdContributions * 12),
-      detail: 'Recurring monthly deposits across retirement, brokerage, savings, and cash reserves.',
+      detail: 'Recurring savings rate powering long-term compounding and FIRE acceleration.',
+      tone: 'slate',
     },
   ]
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-brand-300">WealthOS V2</p>
-        <h2 className="mt-2 text-4xl font-semibold text-white">Household Command Center</h2>
-        <p className="mt-3 max-w-3xl text-slate-400">
-          Run the full household balance sheet from one premium workspace with owner visibility, allocation clarity,
-          portfolio income segmentation, and an operating table for every account in the household system.
-        </p>
-      </div>
+    <div className="space-y-5 lg:space-y-6">
+      <PageHeader
+        eyebrow="WealthOS Premium"
+        title="Household command center"
+        description="A premium mobile-first wealth and FIRE dashboard for passive income, account oversight, and next-step execution."
+      />
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {summaryCards.map((card) => (
-          <StatCard key={card.title} {...card} />
-        ))}
-      </div>
+      <SectionNav sections={dashboardSections} />
 
-      <Panel className="overflow-hidden">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-brand-300">Trajectory</p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">Net worth trajectory</h3>
-            <p className="mt-2 max-w-2xl text-sm text-slate-400">
-              A lightweight 12-month command view using current household net worth and recurring monthly contributions.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <MetricPill label="Current net worth" value={formatCurrency(currentProjection)} />
-            <MetricPill label="Projected +12m" value={formatCurrency(projectedNetWorth)} />
-            <MetricPill label="Projected growth" value={formatPercent(projectedGrowth)} />
-          </div>
+      <section id="dashboard-overview" className="space-y-5 scroll-mt-28">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {summaryCards.map((card) => (
+            <StatCard key={card.title} {...card} />
+          ))}
         </div>
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-[1.5fr,0.8fr]">
-          <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-            <div className="flex h-80 items-end gap-3">
-              {projection.map((point, index) => {
-                const previous = projection[index - 1]?.netWorth ?? point.netWorth
-                const delta = point.netWorth - previous
-                return (
-                  <div key={point.label} className="flex flex-1 flex-col items-center justify-end gap-3">
-                    <div className="flex h-full w-full items-end">
-                      <div
-                        className="relative w-full overflow-hidden rounded-t-[1.5rem] border border-brand-400/10 bg-gradient-to-t from-brand-500 via-brand-400 to-emerald-300 shadow-lg shadow-brand-500/20"
-                        style={{ height: `${Math.max((point.netWorth / maxProjection) * 100, 10)}%` }}
-                      >
-                        <div className="absolute inset-x-0 top-0 h-10 bg-white/10" />
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{point.label}</p>
-                      <p className="mt-1 text-xs font-medium text-slate-200">{formatCurrency(point.netWorth)}</p>
-                      <p className="mt-1 text-[11px] text-emerald-300">{index === 0 ? 'Base' : `+${formatCurrency(delta)}`}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Monthly contribution engine</p>
-              <p className="mt-3 text-3xl font-semibold text-white">{formatCurrency(metrics.monthlyHouseholdContributions)}</p>
-              <p className="mt-2 text-sm text-slate-400">
-                Recurring savings and investing adds approximately {formatCurrency(metrics.monthlyHouseholdContributions * 12)}
-                {' '}to the household system each year before market movement.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Premium operating note</p>
-              <p className="mt-3 text-sm leading-7 text-slate-300">
-                Owner sleeves, account types, and income categories below all roll up from the same live household data,
-                keeping the dashboard analytical without changing the underlying model or navigation.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Panel>
-
-      <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-        <Panel>
-          <div className="flex items-start justify-between gap-4">
+        <Panel className="overflow-hidden">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h3 className="text-2xl font-semibold text-white">Net worth by owner</h3>
-              <p className="mt-2 text-sm text-slate-400">
-                JR, Lisa, and joint balances with ownership share of total household net worth.
+              <p className="text-sm uppercase tracking-[0.24em] text-brand-300">Trajectory</p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">Net worth trajectory</h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                A simple 12-month runway using current household net worth plus recurring monthly contributions.
               </p>
             </div>
-            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-400">
-              Ownership view
-            </span>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MetricPill label="Current" value={formatCurrency(projection[0]?.netWorth)} />
+              <MetricPill label="Projected +12m" value={formatCurrency(projection.at(-1)?.netWorth)} />
+              <MetricPill
+                label="Growth"
+                value={formatPercent(
+                  projection[0]?.netWorth
+                    ? (((projection.at(-1)?.netWorth ?? 0) - projection[0].netWorth) / projection[0].netWorth) * 100
+                    : 0,
+                )}
+              />
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {ownerGroups.map((group) => {
-              const share = metrics.totalHouseholdNetWorth ? (group.totalBalance / metrics.totalHouseholdNetWorth) * 100 : 0
+          <div className="mt-6 flex h-56 items-end gap-2 overflow-x-auto pb-2 sm:h-72 sm:gap-3">
+            {projection.map((point, index) => {
+              const previous = projection[index - 1]?.netWorth ?? point.netWorth
+              const delta = point.netWorth - previous
               return (
-                <div key={group.owner} className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm uppercase tracking-[0.18em] text-slate-500">{group.owner}</p>
-                      <p className="mt-3 text-3xl font-semibold text-white">{formatCurrency(group.totalBalance)}</p>
-                    </div>
-                    <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-200">
-                      {formatPercent(share)}
-                    </span>
+                <div key={point.label} className="flex min-w-[52px] flex-1 flex-col items-center gap-3">
+                  <div className="flex h-full w-full items-end">
+                    <div
+                      className="w-full rounded-t-[1.25rem] bg-gradient-to-t from-brand-500 via-brand-400 to-emerald-300 shadow-lg shadow-brand-500/20"
+                      style={{ height: `${Math.max((point.netWorth / maxProjection) * 100, 10)}%` }}
+                    />
                   </div>
-                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
-                    <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${share}%` }} />
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <MetricPill label="Accounts" value={String(group.accountCount)} />
-                    <MetricPill label="Monthly income" value={formatCurrencyPrecise(group.monthlyIncome)} />
+                  <div className="text-center">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{point.label}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-200">{formatCurrency(point.netWorth)}</p>
+                    <p className="mt-1 text-[11px] text-emerald-300">{index === 0 ? 'Base' : `+${formatCurrency(delta)}`}</p>
                   </div>
                 </div>
               )
             })}
           </div>
         </Panel>
+      </section>
 
-        <Panel>
-          <h3 className="text-2xl font-semibold text-white">Asset allocation by account type</h3>
-          <p className="mt-2 text-sm text-slate-400">
-            Balance and percent of household net worth across brokerage, retirement, savings, cash, and HSA sleeves.
+      <section id="dashboard-income-engine" className="space-y-5 scroll-mt-28">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm uppercase tracking-[0.24em] text-brand-300">Income Engine</p>
+          <h3 className="text-2xl font-semibold text-white">Passive income control layer</h3>
+          <p className="max-w-3xl text-sm leading-6 text-slate-400">
+            Monthly income, annualized income, yield efficiency, and income concentration are all synchronized from the holdings model.
           </p>
-          <div className="mt-6 space-y-4">
-            {accountTypeGroups.map((group) => {
-              const share = metrics.totalHouseholdNetWorth ? (group.totalBalance / metrics.totalHouseholdNetWorth) * 100 : 0
-              return (
-                <AllocationRow
-                  key={group.accountType}
-                  label={group.accountType}
-                  value={formatCurrency(group.totalBalance)}
-                  percentage={formatPercent(share)}
-                  progress={share}
-                  meta={`${group.accountCount} ${group.accountCount === 1 ? 'account' : 'accounts'}`}
-                />
-              )
-            })}
-          </div>
-        </Panel>
-      </div>
+        </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr,0.95fr]">
-        <Panel>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-2xl font-semibold text-white">Income by category</h3>
-              <p className="mt-2 text-sm text-slate-400">
-                Portfolio income grouped by amplified, alternative, anchor, growth, cash, and other category sleeves.
-              </p>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <MiniStat label="Monthly Portfolio Income" value={formatCurrencyPrecise(metrics.monthlyPortfolioIncome)} />
+          <MiniStat label="Annual Portfolio Income" value={formatCurrency(metrics.annualPortfolioIncome)} />
+          <MiniStat label="Weighted Portfolio Yield" value={formatPercent(metrics.weightedPortfolioYield)} />
+          <MiniStat label="Income Owners" value={String(ownerGroups.filter((group) => group.monthlyIncome > 0).length)} />
+          <MiniStat label="Income Accounts" value={String(incomeByAccount.filter((group) => group.monthlyIncome > 0).length)} />
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[1.1fr,0.9fr]">
+          <Panel>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h4 className="text-xl font-semibold text-white">Income by category</h4>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Amplified, alternative, anchor, growth, cash, and other sleeves with monthly, annual, and share of portfolio income.
+                </p>
+              </div>
+              <span className="rounded-full border border-slate-700 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                Live category mix
+              </span>
             </div>
-            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-400">
-              Annual + monthly
-            </span>
-          </div>
 
-          <div className="mt-6 overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/50">
-            <div className="grid grid-cols-[1.2fr,0.8fr,0.8fr,0.8fr] gap-4 border-b border-slate-800 px-5 py-4 text-xs uppercase tracking-[0.2em] text-slate-500">
-              <p>Category</p>
-              <p>Monthly</p>
-              <p>Annual</p>
-              <p>Share</p>
-            </div>
-            <div className="divide-y divide-slate-800">
-              {incomeByCategory.map((group) => {
-                const share = metrics.monthlyPortfolioIncome ? (group.amount / metrics.monthlyPortfolioIncome) * 100 : 0
-                return (
-                  <div key={group.category} className="grid grid-cols-[1.2fr,0.8fr,0.8fr,0.8fr] gap-4 px-5 py-4 text-sm">
-                    <div>
-                      <p className="font-semibold text-white">{group.category}</p>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
-                        <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${share}%` }} />
-                      </div>
-                    </div>
-                    <p className="font-medium text-slate-200">{formatCurrencyPrecise(group.amount)}</p>
-                    <p className="font-medium text-slate-200">{formatCurrency(group.amount * 12)}</p>
-                    <p className="text-brand-200">{formatPercent(share)}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </Panel>
-
-        <Panel>
-          <h3 className="text-2xl font-semibold text-white">Owner contribution pacing</h3>
-          <p className="mt-2 text-sm text-slate-400">
-            Monthly household funding mix across JR, Lisa, and joint accounts.
-          </p>
-
-          <div className="mt-6 space-y-4">
-            {ownerGroups.map((group) => {
-              const progress = metrics.monthlyHouseholdContributions
-                ? (group.monthlyContributions / metrics.monthlyHouseholdContributions) * 100
-                : 0
-              return (
-                <div key={group.owner} className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-lg font-semibold text-white">{group.owner}</p>
-                      <p className="mt-1 text-sm text-slate-400">{formatCurrency(group.monthlyContributions)} / month</p>
-                    </div>
-                    <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-200">
-                      {formatPercent(progress)}
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {incomeByCategory.map((group) => (
+                <div key={group.category} className="rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-base font-semibold text-white">{group.category}</p>
+                    <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold text-brand-200">
+                      {formatPercent(group.portfolioShare)}
                     </span>
                   </div>
                   <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-                    <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${progress}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${group.portfolioShare}%` }} />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <MetricBlock label="Monthly" value={formatCurrencyPrecise(group.monthlyIncome)} />
+                    <MetricBlock label="Annual" value={formatCurrency(group.annualIncome)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <div className="space-y-5">
+            <Panel>
+              <h4 className="text-xl font-semibold text-white">Income by owner</h4>
+              <p className="mt-2 text-sm leading-6 text-slate-400">Which owner sleeve is carrying the current passive income load.</p>
+              <div className="mt-5 space-y-3">
+                {ownerGroups.map((group) => {
+                  const progress = metrics.monthlyPortfolioIncome ? (group.monthlyIncome / metrics.monthlyPortfolioIncome) * 100 : 0
+                  return (
+                    <ProgressRow
+                      key={group.owner}
+                      label={group.owner}
+                      value={formatCurrencyPrecise(group.monthlyIncome)}
+                      subValue={formatCurrency(group.annualIncome)}
+                      progress={progress}
+                    />
+                  )
+                })}
+              </div>
+            </Panel>
+
+            <Panel>
+              <h4 className="text-xl font-semibold text-white">Income by account</h4>
+              <p className="mt-2 text-sm leading-6 text-slate-400">Account-level income distribution for account concentration awareness.</p>
+              <div className="mt-5 space-y-3">
+                {incomeByAccount.map((group) => {
+                  const progress = metrics.monthlyPortfolioIncome ? (group.monthlyIncome / metrics.monthlyPortfolioIncome) * 100 : 0
+                  return (
+                    <ProgressRow
+                      key={group.id}
+                      label={group.accountName}
+                      caption={`${group.owner} · ${group.accountType}`}
+                      value={formatCurrencyPrecise(group.monthlyIncome)}
+                      subValue={formatCurrency(group.annualIncome)}
+                      progress={progress}
+                    />
+                  )
+                })}
+              </div>
+            </Panel>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard-fire-tracker" className="space-y-5 scroll-mt-28">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm uppercase tracking-[0.24em] text-brand-300">FIRE Tracker</p>
+          <h3 className="text-2xl font-semibold text-white">Passive income coverage against your target</h3>
+          <p className="max-w-3xl text-sm leading-6 text-slate-400">
+            Default monthly FIRE target is set to {formatCurrency(fireMetrics.monthlyTarget)} with live progress driven by current portfolio income.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <StatCard title="Target Monthly Income" value={formatCurrency(fireMetrics.monthlyTarget)} change="Default" detail="Baseline monthly FIRE cash-flow target." tone="slate" />
+          <StatCard title="Current Passive Income" value={formatCurrencyPrecise(fireMetrics.currentPassiveIncome)} change={formatCurrency(fireMetrics.currentPassiveIncome * 12)} detail="Current monthly passive income from the portfolio." tone="brand" />
+          <StatCard title="Coverage Ratio" value={formatPercent(fireMetrics.coverageRatio * 100)} change={`${fireMetrics.coverageRatio.toFixed(2)}x`} detail="Current passive income divided by the target monthly income." tone="emerald" />
+          <StatCard title="Remaining Income Gap" value={formatCurrencyPrecise(fireMetrics.remainingIncomeGap)} change={formatCurrency(fireMetrics.remainingIncomeGap * 12)} detail="How much more monthly passive income is needed to hit FIRE." tone="slate" />
+          <StatCard title="Annual FIRE Target" value={formatCurrency(fireMetrics.annualFireTarget)} change="12 months" detail="Annual target derived from the monthly FIRE target." tone="slate" />
+        </div>
+
+        <Panel>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.22em] text-slate-500">Progress bar</p>
+              <h4 className="mt-2 text-xl font-semibold text-white">FIRE income progress</h4>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Current passive income covers {formatPercent(fireMetrics.progressPercent)} of the monthly FIRE target.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-slate-800 bg-slate-950/60 px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Target relationship</p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {formatCurrencyPrecise(fireMetrics.currentPassiveIncome)} / {formatCurrency(fireMetrics.monthlyTarget)}
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 h-4 overflow-hidden rounded-full bg-slate-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-400 via-brand-500 to-emerald-300 transition-all"
+              style={{ width: `${fireMetrics.progressPercent}%` }}
+            />
+          </div>
+        </Panel>
+      </section>
+
+      <section id="dashboard-accounts-breakdown" className="space-y-5 scroll-mt-28">
+        <div className="grid gap-5 xl:grid-cols-[0.92fr,1.08fr]">
+          <Panel>
+            <h3 className="text-2xl font-semibold text-white">Net worth by owner</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">Owner-level net worth, income, and contribution pacing in one view.</p>
+            <div className="mt-5 space-y-3">
+              {ownerGroups.map((group) => {
+                const share = metrics.totalHouseholdNetWorth ? (group.totalBalance / metrics.totalHouseholdNetWorth) * 100 : 0
+                return (
+                  <ProgressRow
+                    key={group.owner}
+                    label={group.owner}
+                    value={formatCurrency(group.totalBalance)}
+                    subValue={`${formatCurrencyPrecise(group.monthlyIncome)} income / ${formatCurrency(group.monthlyContributions)} contrib.`}
+                    progress={share}
+                  />
+                )
+              })}
+            </div>
+          </Panel>
+
+          <Panel>
+            <h3 className="text-2xl font-semibold text-white">Asset allocation by account type</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">Balance and portfolio share across brokerage, retirement, savings, and cash sleeves.</p>
+            <div className="mt-5 space-y-3">
+              {accountTypeGroups.map((group) => {
+                const share = metrics.totalHouseholdNetWorth ? (group.totalBalance / metrics.totalHouseholdNetWorth) * 100 : 0
+                return (
+                  <ProgressRow
+                    key={group.accountType}
+                    label={group.accountType}
+                    value={formatCurrency(group.totalBalance)}
+                    subValue={`${group.accountCount} ${group.accountCount === 1 ? 'account' : 'accounts'} · ${formatPercent(share)}`}
+                    progress={share}
+                  />
+                )
+              })}
+            </div>
+          </Panel>
+        </div>
+
+        <Panel>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-2xl font-semibold text-white">Accounts breakdown</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Monthly and annual income stay mathematically aligned for every account in the household system.
+              </p>
+            </div>
+            <span className="rounded-full border border-slate-700 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+              {metrics.numberOfAccounts} tracked accounts
+            </span>
+          </div>
+
+          <div className="mt-5 hidden overflow-hidden rounded-3xl border border-slate-800 md:block">
+            <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+              <thead className="bg-slate-950/80 text-slate-400">
+                <tr>
+                  {['Owner', 'Account', 'Institution', 'Type', 'Balance', 'Monthly income', 'Annual income'].map((heading) => (
+                    <th key={heading} className="px-4 py-3 font-medium">{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 bg-slate-900/35">
+                {metrics.accounts.map((account) => {
+                  const monthlyIncome = account.holdings.reduce((sum, holding) => sum + holding.estimatedMonthlyIncome, 0)
+                  const annualIncome = monthlyIncome * 12
+                  return (
+                    <tr key={account.id}>
+                      <td className="px-4 py-4 text-white">{account.owner}</td>
+                      <td className="px-4 py-4 text-white">{account.accountName}</td>
+                      <td className="px-4 py-4 text-slate-300">{account.institution}</td>
+                      <td className="px-4 py-4 text-slate-300">{account.accountType}</td>
+                      <td className="px-4 py-4 text-slate-200">{formatCurrency(account.balance)}</td>
+                      <td className="px-4 py-4 text-slate-200">{formatCurrencyPrecise(monthlyIncome)}</td>
+                      <td className="px-4 py-4 text-emerald-300">{formatCurrency(annualIncome)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:hidden">
+            {metrics.accounts.map((account) => {
+              const monthlyIncome = account.holdings.reduce((sum, holding) => sum + holding.estimatedMonthlyIncome, 0)
+              const annualIncome = monthlyIncome * 12
+              return (
+                <div key={account.id} className="rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-semibold text-white">{account.accountName}</p>
+                      <p className="mt-1 text-sm text-slate-400">{account.owner} · {account.institution} · {account.accountType}</p>
+                    </div>
+                    <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold text-brand-200">
+                      {account.holdings.length} holdings
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <MetricBlock label="Balance" value={formatCurrency(account.balance)} />
+                    <MetricBlock label="Monthly income" value={formatCurrencyPrecise(monthlyIncome)} />
+                    <MetricBlock label="Annual income" value={formatCurrency(annualIncome)} />
+                    <MetricBlock label="Contribution" value={formatCurrency(account.monthlyContribution)} />
                   </div>
                 </div>
               )
             })}
           </div>
         </Panel>
-      </div>
+      </section>
+    </div>
+  )
+}
 
-      <Panel>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-2xl font-semibold text-white">Household accounts breakdown</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              Clean operating table across owner, institution, account type, balance, monthly contribution, and annual income.
-            </p>
-          </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-400">
-            {metrics.numberOfAccounts} tracked accounts
-          </span>
-        </div>
+function PageHeader({ eyebrow, title, description }) {
+  return (
+    <div>
+      <p className="text-sm uppercase tracking-[0.3em] text-brand-300">{eyebrow}</p>
+      <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">{title}</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">{description}</p>
+    </div>
+  )
+}
 
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-800 bg-slate-950/50">
-          <table className="min-w-full divide-y divide-slate-800 text-left">
-            <thead className="bg-slate-950/90 text-xs uppercase tracking-[0.2em] text-slate-500">
-              <tr>
-                <th className="px-5 py-4 font-medium">Owner</th>
-                <th className="px-5 py-4 font-medium">Account</th>
-                <th className="px-5 py-4 font-medium">Institution</th>
-                <th className="px-5 py-4 font-medium">Type</th>
-                <th className="px-5 py-4 font-medium">Balance</th>
-                <th className="px-5 py-4 font-medium">Monthly contribution</th>
-                <th className="px-5 py-4 font-medium">Estimated annual income</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800 text-sm">
-              {accounts.map((account) => {
-                const annualIncome = calculateAccountMonthlyIncome(account) * 12
-                return (
-                  <tr key={account.id} className="transition-colors hover:bg-slate-900/80">
-                    <td className="px-5 py-4 text-white">{account.owner}</td>
-                    <td className="px-5 py-4">
-                      <div>
-                        <p className="font-semibold text-white">{account.accountName}</p>
-                        <p className="mt-1 text-xs text-slate-500">{account.holdings.length} holdings</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-slate-300">{account.institution}</td>
-                    <td className="px-5 py-4 text-slate-300">{account.accountType}</td>
-                    <td className="px-5 py-4 font-medium text-white">{formatCurrency(account.balance)}</td>
-                    <td className="px-5 py-4 text-slate-200">{formatCurrency(account.monthlyContribution)}</td>
-                    <td className="px-5 py-4 text-emerald-300">{formatCurrency(annualIncome)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-3 text-xl font-semibold text-white">{value}</p>
     </div>
   )
 }
@@ -338,26 +414,33 @@ function MetricPill({ label, value }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+      <p className="mt-2 text-base font-semibold text-white sm:text-lg">{value}</p>
     </div>
   )
 }
 
-function AllocationRow({ label, value, percentage, progress, meta }) {
+function MetricBlock({ label, value }) {
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-      <div className="flex items-center justify-between gap-4">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-3">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+    </div>
+  )
+}
+
+function ProgressRow({ label, value, subValue, progress, caption }) {
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-lg font-semibold text-white">{label}</p>
-          <p className="mt-1 text-sm text-slate-400">{meta}</p>
+          <p className="text-base font-semibold text-white">{label}</p>
+          {caption ? <p className="mt-1 text-sm text-slate-500">{caption}</p> : null}
+          <p className="mt-1 text-sm text-slate-400">{subValue}</p>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-semibold text-white">{value}</p>
-          <p className="mt-1 text-sm text-brand-200">{percentage}</p>
-        </div>
+        <p className="text-sm font-semibold text-white">{value}</p>
       </div>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-        <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${progress}%` }} />
+        <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${Math.min(progress, 100)}%` }} />
       </div>
     </div>
   )

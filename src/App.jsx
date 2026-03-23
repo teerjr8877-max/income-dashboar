@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { AccountsPage } from './components/AccountsPage'
+import { BottomNav } from './components/BottomNav'
 import { CashFlowPage } from './components/CashFlowPage'
 import { DashboardPage } from './components/DashboardPage'
 import { PlannerPage } from './components/PlannerPage'
 import { Sidebar } from './components/Sidebar'
-import { accountsSeed, cashFlowSeed, plannerGoalsSeed } from './data/mockData'
+import { accountsSeed, cashFlowSeed, normalizeAccount, plannerGoalsSeed } from './data/mockData'
 
 const pages = {
   Dashboard: DashboardPage,
@@ -15,7 +16,7 @@ const pages = {
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('Dashboard')
-  const [accounts, setAccounts] = useState(accountsSeed)
+  const [accounts, setAccounts] = useState(accountsSeed.map(normalizeAccount))
   const [cashFlow, setCashFlow] = useState(cashFlowSeed)
   const [goals, setGoals] = useState(plannerGoalsSeed)
 
@@ -36,9 +37,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 lg:flex">
       <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
-      <main className="flex-1 px-6 py-8 sm:px-8 lg:px-10">
-        <CurrentPage {...pageProps} />
+      <main className="wealth-main flex-1 px-4 pb-28 pt-4 sm:px-5 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-8">
+        <div className="mx-auto w-full max-w-7xl">
+          <CurrentPage {...pageProps} />
+        </div>
       </main>
+      <BottomNav currentPage={currentPage} onNavigate={setCurrentPage} />
     </div>
   )
 }
