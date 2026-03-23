@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AccountsPage } from './components/AccountsPage'
+import { BottomNav } from './components/BottomNav'
 import { CashFlowPage } from './components/CashFlowPage'
 import { DashboardPage } from './components/DashboardPage'
 import { PlannerPage } from './components/PlannerPage'
@@ -85,6 +86,7 @@ export default function App() {
       <main className="flex-1 px-6 py-8 pb-28 sm:px-8 lg:px-10 lg:pb-8">
         <CurrentPage {...pageProps} />
       </main>
+      <BottomNav currentPage={currentPage} onNavigate={setCurrentPage} />
     </div>
   )
 }

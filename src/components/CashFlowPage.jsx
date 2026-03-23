@@ -1,11 +1,14 @@
 import { useMemo } from 'react'
-import {
-  accountOwners,
-  cashFlowCategories,
-  formatCurrency,
-  summarizeCashFlowRows,
-} from '../data/mockData'
+import { accountOwners, cashFlowCategories, formatCurrency, summarizeCashFlowRows } from '../data/mockData'
 import { Panel } from '../ui/Panel'
+import { SectionNav } from './SectionNav'
+
+const cashFlowSections = [
+  { id: 'cashflow-overview', label: 'Overview' },
+  { id: 'cashflow-income', label: 'Income' },
+  { id: 'cashflow-expenses', label: 'Expenses' },
+  { id: 'cashflow-surplus', label: 'Surplus' },
+]
 
 export function CashFlowPage({ cashFlow, setCashFlow }) {
   const incomeTotal = useMemo(() => cashFlow.income.reduce((sum, row) => sum + Number(row.amount), 0), [cashFlow.income])
@@ -39,34 +42,38 @@ export function CashFlowPage({ cashFlow, setCashFlow }) {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-brand-300">Household Movement</p>
-        <h2 className="mt-2 text-4xl font-semibold text-white">CashFlow</h2>
-        <p className="mt-3 max-w-3xl text-slate-400">
-          Run household income and expense operations with owner assignment, category visibility, and a clear read on
-          monthly and annual surplus capacity.
-        </p>
-      </div>
+    <div className="space-y-5 lg:space-y-6">
+      <PageHeader
+        eyebrow="Household Movement"
+        title="CashFlow"
+        description="Run the household operating budget with a premium mobile layout for inflows, expenses, and surplus visibility."
+      />
 
-      <div className="grid gap-5 lg:grid-cols-4">
-        <SummaryCard title="Total monthly income" value={formatCurrency(incomeTotal)} detail={`Annualized ${formatCurrency(incomeTotal * 12)}`} />
-        <SummaryCard title="Total monthly expenses" value={formatCurrency(expenseTotal)} detail={`Annualized ${formatCurrency(expenseTotal * 12)}`} />
-        <SummaryCard title="Monthly surplus" value={formatCurrency(monthlySurplus)} detail="Income minus all monthly expenses" />
-        <SummaryCard title="Annual surplus" value={formatCurrency(annualSurplus)} detail="Current monthly surplus annualized across 12 months" />
-      </div>
+      <SectionNav sections={cashFlowSections} />
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
-        <div className="space-y-6">
-          <CashFlowTable title="Income rows" rows={cashFlow.income} type="income" accent="emerald" onAddRow={addRow} onUpdateRow={updateRow} />
-          <CashFlowTable title="Expense rows" rows={cashFlow.expenses} type="expenses" accent="rose" onAddRow={addRow} onUpdateRow={updateRow} />
+      <section id="cashflow-overview" className="scroll-mt-28">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard title="Total monthly income" value={formatCurrency(incomeTotal)} detail={`Annualized ${formatCurrency(incomeTotal * 12)}`} />
+          <SummaryCard title="Total monthly expenses" value={formatCurrency(expenseTotal)} detail={`Annualized ${formatCurrency(expenseTotal * 12)}`} />
+          <SummaryCard title="Monthly surplus" value={formatCurrency(monthlySurplus)} detail="Income minus all monthly expenses" />
+          <SummaryCard title="Annual surplus" value={formatCurrency(annualSurplus)} detail="Current monthly surplus annualized across 12 months" />
         </div>
+      </section>
 
-        <div className="space-y-6">
+      <section id="cashflow-income" className="scroll-mt-28">
+        <CashFlowTable title="Income rows" rows={cashFlow.income} type="income" accent="emerald" onAddRow={addRow} onUpdateRow={updateRow} />
+      </section>
+
+      <section id="cashflow-expenses" className="scroll-mt-28">
+        <CashFlowTable title="Expense rows" rows={cashFlow.expenses} type="expenses" accent="rose" onAddRow={addRow} onUpdateRow={updateRow} />
+      </section>
+
+      <section id="cashflow-surplus" className="scroll-mt-28">
+        <div className="grid gap-5 xl:grid-cols-2">
           <Panel>
             <h3 className="text-2xl font-semibold text-white">Income by owner</h3>
-            <p className="mt-2 text-sm text-slate-400">Who is powering monthly household inflows right now.</p>
-            <div className="mt-6 space-y-4">
+            <p className="mt-2 text-sm leading-6 text-slate-400">Who is powering monthly household inflows right now.</p>
+            <div className="mt-5 space-y-3">
               {incomeByOwner.map((item) => {
                 const share = incomeTotal ? (item.amount / incomeTotal) * 100 : 0
                 return <InsightRow key={item.label} label={item.label} amount={item.amount} progress={share} />
@@ -76,8 +83,8 @@ export function CashFlowPage({ cashFlow, setCashFlow }) {
 
           <Panel>
             <h3 className="text-2xl font-semibold text-white">Expenses by category</h3>
-            <p className="mt-2 text-sm text-slate-400">Where household cash is being allocated each month.</p>
-            <div className="mt-6 space-y-4">
+            <p className="mt-2 text-sm leading-6 text-slate-400">Where household cash is being allocated each month.</p>
+            <div className="mt-5 space-y-3">
               {expensesByCategory.map((item) => {
                 const share = expenseTotal ? (item.amount / expenseTotal) * 100 : 0
                 return <InsightRow key={item.label} label={item.label} amount={item.amount} progress={share} />
@@ -85,7 +92,17 @@ export function CashFlowPage({ cashFlow, setCashFlow }) {
             </div>
           </Panel>
         </div>
-      </div>
+      </section>
+    </div>
+  )
+}
+
+function PageHeader({ eyebrow, title, description }) {
+  return (
+    <div>
+      <p className="text-sm uppercase tracking-[0.3em] text-brand-300">{eyebrow}</p>
+      <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">{title}</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">{description}</p>
     </div>
   )
 }
@@ -93,10 +110,10 @@ export function CashFlowPage({ cashFlow, setCashFlow }) {
 function CashFlowTable({ title, rows, type, accent, onAddRow, onUpdateRow }) {
   return (
     <Panel>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-xl font-semibold text-white">{title}</h3>
-          <p className="mt-2 text-sm text-slate-400">Edit labels, owners, categories, and monthly values directly. Annualized values update automatically.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Edit labels, owners, categories, and monthly values directly. Annualized values update automatically.</p>
         </div>
         <button
           type="button"
@@ -111,7 +128,7 @@ function CashFlowTable({ title, rows, type, accent, onAddRow, onUpdateRow }) {
         </button>
       </div>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-5 space-y-3">
         {rows.map((row) => (
           <div key={row.id} className="grid gap-3 rounded-3xl border border-slate-800 bg-slate-950/60 p-4 md:grid-cols-2 xl:grid-cols-[1.2fr,0.7fr,0.7fr,0.8fr,0.8fr]">
             <label className="space-y-2 text-sm text-slate-300">
@@ -150,7 +167,7 @@ function SummaryCard({ title, value, detail }) {
     <Panel>
       <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{title}</p>
       <p className="mt-4 text-3xl font-semibold text-white">{value}</p>
-      <p className="mt-2 text-slate-300">{detail}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{detail}</p>
     </Panel>
   )
 }
