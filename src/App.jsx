@@ -12,10 +12,10 @@ import {
   formatCurrency,
   loadLocalWorkspace,
   normalizeWorkspace,
-  persistLocalWorkspace,
   stampWorkspace,
   toCashFlowBuckets,
 } from './data/householdModel'
+import { usePersistentAppData } from './hooks/usePersistentAppData'
 import {
   authenticate,
   bootstrapSession,
@@ -40,11 +40,19 @@ const pages = {
   Settings: SettingsPage,
 }
 
-const initialWorkspace = persistLocalWorkspace(loadLocalWorkspace())
+const initialWorkspace = loadLocalWorkspace()
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('Dashboard')
-  const [workspace, setWorkspace] = useState(initialWorkspace)
+  const {
+    appData: workspace,
+    saveState,
+    lastSavedAt,
+    resetToDemoData,
+  } = usePersistentAppData(
+    initialWorkspace,
+    () => createStarterWorkspace(),
+  )
   const [session, setSession] = useState(null)
   const [user, setUser] = useState(null)
   const [membership, setMembership] = useState(null)
@@ -110,7 +118,7 @@ export default function App() {
 
     if (remoteWorkspace?.payload) {
       const hydrated = normalizeWorkspace(remoteWorkspace.payload)
-      const persisted = persistLocalWorkspace({
+      const persisted = {
         ...hydrated,
         metadata: {
           ...hydrated.metadata,
@@ -118,8 +126,8 @@ export default function App() {
           lastLocalSaveAt: hydrated.metadata?.lastLocalSaveAt ?? new Date().toISOString(),
           source: 'cloud',
         },
-      })
-      setWorkspace(persisted)
+      }
+      saveState(persisted)
       lastLoadedRef.current = JSON.stringify(persisted)
       setCloudVersion(remoteWorkspace.version)
       setSyncState({ status: 'synced', label: 'Synced', error: null, lastSavedLabel: formatDateLabel(persisted.metadata.lastLocalSaveAt), lastSyncedLabel: formatDateLabel(new Date().toISOString()) })
@@ -138,19 +146,17 @@ export default function App() {
         const remote = await fetchWorkspace(activeSession.access_token, householdId)
         if (!remote || remote.version === cloudVersion) return
         setCloudVersion(remote.version)
-        setWorkspace((current) => {
-          const merged = normalizeWorkspace(remote.payload)
-          const persisted = persistLocalWorkspace({
-            ...merged,
-            metadata: {
-              ...merged.metadata,
-              lastCloudSyncAt: new Date().toISOString(),
-              lastLocalSaveAt: merged.metadata?.lastLocalSaveAt ?? new Date().toISOString(),
-            },
-          })
-          lastLoadedRef.current = JSON.stringify(persisted)
-          return persisted
-        })
+        const merged = normalizeWorkspace(remote.payload)
+        const persisted = {
+          ...merged,
+          metadata: {
+            ...merged.metadata,
+            lastCloudSyncAt: new Date().toISOString(),
+            lastLocalSaveAt: merged.metadata?.lastLocalSaveAt ?? new Date().toISOString(),
+          },
+        }
+        saveState(persisted)
+        lastLoadedRef.current = JSON.stringify(persisted)
         setSyncState((current) => ({ ...current, status: 'synced', label: 'New cloud updates loaded', lastSyncedLabel: formatDateLabel(new Date().toISOString()) }))
       } catch (error) {
         setSyncState((current) => ({ ...current, status: 'error', label: 'Polling error', error: error.message, lastSavedLabel: current.lastSavedLabel, lastSyncedLabel: current.lastSyncedLabel }))
@@ -159,13 +165,12 @@ export default function App() {
   }
 
   useEffect(() => {
-    persistLocalWorkspace(workspace)
-    setSyncState((current) => ({ ...current, lastSavedLabel: formatDateLabel(workspace.metadata.lastLocalSaveAt) }))
+    setSyncState((current) => ({ ...current, lastSavedLabel: formatDateLabel(lastSavedAt ?? workspace.metadata.lastLocalSaveAt) }))
     if (!isLoaded) return
     if (JSON.stringify(workspace) === lastLoadedRef.current) return
     dirtyRef.current = true
     setSyncState((current) => ({ ...current, status: cloudEnabled && session && membership ? 'saving' : current.status, label: cloudEnabled && session && membership ? 'Saving household…' : current.label }))
-  }, [workspace, isLoaded])
+  }, [workspace, isLoaded, lastSavedAt])
 
   useEffect(() => {
     if (!cloudEnabled || !session || !membership || !dirtyRef.current || !isLoaded) return undefined
@@ -180,15 +185,15 @@ export default function App() {
           result = await saveWorkspace({ accessToken: session.access_token, householdId: membership.household_id, version: merged.version, payload: nextPayload, userId: user?.id ?? null })
         }
         if (!result) throw new Error('Could not save because another device updated the workspace at the same time.')
-        const syncedWorkspace = persistLocalWorkspace({
+        const syncedWorkspace = {
           ...nextPayload,
           metadata: {
             ...nextPayload.metadata,
             lastCloudSyncAt: new Date().toISOString(),
             lastLocalSaveAt: nextPayload.metadata.lastLocalSaveAt ?? new Date().toISOString(),
           },
-        })
-        setWorkspace(syncedWorkspace)
+        }
+        saveState(syncedWorkspace)
         setCloudVersion(result.version)
         lastLoadedRef.current = JSON.stringify(syncedWorkspace)
         dirtyRef.current = false
@@ -203,7 +208,7 @@ export default function App() {
   }, [workspace, session, membership, cloudVersion, isLoaded, user])
 
   const mutateWorkspace = (reason, updater) => {
-    setWorkspace((current) => {
+    saveState((current) => {
       const base = typeof updater === 'function' ? updater(current) : updater
       const now = new Date().toISOString()
       const stamped = stampWorkspace(base, user?.id ?? null)
@@ -262,7 +267,10 @@ export default function App() {
   }
 
   const handleResetDemo = () => {
-    mutateWorkspace('Reset demo data', () => createStarterWorkspace({ householdId: membership?.household_id ?? null, householdName: workspace.household.name, slug: workspace.household.slug, createdBy: user?.id ?? null }))
+    resetToDemoData(() => ({
+      ...createStarterWorkspace({ householdId: membership?.household_id ?? null, householdName: workspace.household.name, slug: workspace.household.slug, createdBy: user?.id ?? null }),
+      activity: [createActivityEntry('Reset demo data', user?.email ?? 'Local device')],
+    }))
   }
 
   const handleExport = (payload) => {
