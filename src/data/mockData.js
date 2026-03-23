@@ -50,23 +50,28 @@ const createAccount = ({
   monthlyContribution,
   notes,
   holdings,
-}) => ({
-  id,
-  owner,
-  accountName,
-  institution,
-  accountType,
-  balance,
-  monthlyContribution,
-  notes,
-  holdings,
-})
+}) => {
+  const normalizedHoldings = holdings.map((holding) => createHolding(holding))
+  const holdingsMarketValue = normalizedHoldings.reduce((sum, holding) => sum + Number(holding.marketValue), 0)
+
+  return {
+    id,
+    owner,
+    accountName,
+    institution,
+    accountType,
+    balance: holdingsMarketValue || Number(balance) || 0,
+    monthlyContribution,
+    notes,
+    holdings: normalizedHoldings,
+  }
+}
 
 export const accountsSeed = [
   createAccount({
     id: 1,
     owner: 'JR',
-    accountName: 'JR Brokerage',
+    accountName: 'JR Income Brokerage',
     institution: 'Fidelity',
     accountType: 'Brokerage',
     balance: 143900,
@@ -115,7 +120,7 @@ export const accountsSeed = [
     ],
   }),
   createAccount({
-    id: 4,
+    id: 3,
     owner: 'Lisa',
     accountName: 'Lisa Roth IRA',
     institution: 'Charles Schwab',
@@ -132,7 +137,7 @@ export const accountsSeed = [
     ],
   }),
   createAccount({
-    id: 5,
+    id: 4,
     owner: 'Lisa',
     accountName: 'Lisa 401k',
     institution: 'Vanguard',
@@ -163,7 +168,7 @@ export const accountsSeed = [
     ],
   }),
   createAccount({
-    id: 7,
+    id: 5,
     owner: 'Joint',
     accountName: 'Joint Income Portfolio',
     institution: 'M1 Finance',
@@ -185,7 +190,8 @@ export const cashFlowSeed = {
   income: [
     { id: 1, label: 'JR Salary', amount: 9200, owner: 'JR', category: 'Salary' },
     { id: 2, label: 'Lisa Salary', amount: 7600, owner: 'Lisa', category: 'Salary' },
-    { id: 3, label: 'Portfolio Income', amount: 2480, owner: 'Joint', category: 'Portfolio' },
+    { id: 3, label: 'Portfolio Income', amount: 2249.75, owner: 'Joint', category: 'Portfolio' },
+    { id: 4, label: 'Side Venture', amount: 950, owner: 'JR', category: 'Side Hustle' },
   ],
   expenses: [
     { id: 101, label: 'Mortgage', amount: 3250, owner: 'Joint', category: 'Mortgage' },
@@ -194,6 +200,7 @@ export const cashFlowSeed = {
     { id: 104, label: 'Groceries', amount: 1180, owner: 'Joint', category: 'Groceries' },
     { id: 105, label: 'Travel', amount: 650, owner: 'Joint', category: 'Travel' },
     { id: 106, label: 'Investments', amount: 2200, owner: 'Joint', category: 'Investments' },
+    { id: 107, label: 'Childcare', amount: 850, owner: 'Joint', category: 'Childcare' },
   ],
 }
 
@@ -209,7 +216,7 @@ export function formatCurrency(value) {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
-  }).format(value)
+  }).format(Number(value) || 0)
 }
 
 export function formatCurrencyPrecise(value) {
@@ -218,11 +225,11 @@ export function formatCurrencyPrecise(value) {
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value)
+  }).format(Number(value) || 0)
 }
 
 export function formatPercent(value) {
-  return `${Number(value).toFixed(1)}%`
+  return `${Number(value || 0).toFixed(1)}%`
 }
 
 export function formatMultiple(value) {
@@ -241,6 +248,32 @@ export function calculateHoldingMonthlySchedule(holding) {
   const annualIncome = calculateHoldingAnnualIncome(holding)
   const weights = holding.monthlyDistribution?.length === 12 ? holding.monthlyDistribution : distributionPatterns.monthly
   return weights.map((weight) => Number((annualIncome * Number(weight)).toFixed(2)))
+}
+
+export function calculateHoldingAnnualIncome(holding) {
+  return Number((Number(holding.estimatedMonthlyIncome ?? calculateHoldingMonthlyIncome(holding)) * 12).toFixed(2))
+}
+
+export function normalizeHolding(holding) {
+  const estimatedMonthlyIncome = calculateHoldingMonthlyIncome(holding)
+
+  return {
+    ...holding,
+    estimatedMonthlyIncome,
+    estimatedAnnualIncome: calculateHoldingAnnualIncome({ estimatedMonthlyIncome }),
+  }
+}
+
+export function normalizeAccount(account) {
+  const holdings = (account.holdings ?? []).map(normalizeHolding)
+  const holdingsMarketValue = holdings.reduce((sum, holding) => sum + Number(holding.marketValue), 0)
+
+  return {
+    ...account,
+    balance: holdingsMarketValue || Number(account.balance) || 0,
+    monthlyContribution: Number(account.monthlyContribution) || 0,
+    holdings,
+  }
 }
 
 export function calculateAccountMonthlyIncome(account) {
@@ -294,6 +327,8 @@ export function calculateHouseholdMetrics(accounts, cashFlow = { expenses: [] })
   const contributionToIncomeConversion = (1000 * weightedPortfolioYield) / 100
 
   return {
+    accounts: normalizedAccounts,
+    holdings,
     totalHouseholdNetWorth,
     totalInvestedAssets,
     totalCashSavings,
@@ -301,6 +336,7 @@ export function calculateHouseholdMetrics(accounts, cashFlow = { expenses: [] })
     totalCostBasis,
     monthlyPortfolioIncome,
     annualPortfolioIncome,
+    weightedPortfolioYield,
     monthlyHouseholdContributions,
     monthlyHouseholdExpenses,
     weightedPortfolioYield,
@@ -313,8 +349,10 @@ export function calculateHouseholdMetrics(accounts, cashFlow = { expenses: [] })
 }
 
 export function groupAccountsByOwner(accounts) {
+  const metrics = calculateHouseholdMetrics(accounts)
+
   return accountOwners.map((owner) => {
-    const ownerAccounts = accounts.filter((account) => account.owner === owner)
+    const ownerAccounts = metrics.accounts.filter((account) => account.owner === owner)
     return {
       owner,
       totalBalance: ownerAccounts.reduce((sum, account) => sum + Number(account.balance), 0),
@@ -328,9 +366,11 @@ export function groupAccountsByOwner(accounts) {
 }
 
 export function groupAccountsByAccountType(accounts) {
+  const metrics = calculateHouseholdMetrics(accounts)
+
   return accountTypes
     .map((accountType) => {
-      const matchingAccounts = accounts.filter((account) => account.accountType === accountType)
+      const matchingAccounts = metrics.accounts.filter((account) => account.accountType === accountType)
       return {
         accountType,
         totalBalance: matchingAccounts.reduce((sum, account) => sum + Number(account.balance), 0),
@@ -449,7 +489,7 @@ export function summarizeCashFlowRows(rows, key) {
   const map = new Map()
   rows.forEach((row) => {
     const bucket = row[key] || 'Unassigned'
-    map.set(bucket, (map.get(bucket) ?? 0) + Number(row.amount))
+    map.set(bucket, Number(((map.get(bucket) ?? 0) + Number(row.amount)).toFixed(2)))
   })
   return [...map.entries()]
     .map(([label, amount]) => ({ label, amount }))

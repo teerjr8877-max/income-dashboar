@@ -1,8 +1,17 @@
-import { calculateGoalProgress, calculateHouseholdMetrics, formatCurrency } from '../data/mockData'
+import { buildFireMetrics, calculateGoalProgress, calculateHouseholdMetrics, formatCurrency } from '../data/mockData'
 import { Panel } from '../ui/Panel'
+import { SectionNav } from './SectionNav'
+
+const plannerSections = [
+  { id: 'planner-goals', label: 'Goals' },
+  { id: 'planner-fi-progress', label: 'FI Progress' },
+  { id: 'planner-scenarios', label: 'Scenarios' },
+  { id: 'planner-next-actions', label: 'Next Actions' },
+]
 
 export function PlannerPage({ accounts = [], goals = [], setGoals }) {
   const metrics = calculateHouseholdMetrics(accounts)
+  const fireMetrics = buildFireMetrics(accounts)
 
   const updateGoal = (id, field, value) => {
     setGoals((current) =>
@@ -10,65 +19,114 @@ export function PlannerPage({ accounts = [], goals = [], setGoals }) {
     )
   }
 
+  const scenarioCards = [
+    {
+      title: 'Lean FIRE',
+      value: formatCurrency(7000),
+      detail: `Coverage today: ${((fireMetrics.currentPassiveIncome / 7000) * 100).toFixed(1)}%`,
+    },
+    {
+      title: 'Target FIRE',
+      value: formatCurrency(fireMetrics.monthlyTarget),
+      detail: `Gap remaining: ${formatCurrency(fireMetrics.remainingIncomeGap)}`,
+    },
+    {
+      title: 'Fat FIRE',
+      value: formatCurrency(14000),
+      detail: `Coverage today: ${((fireMetrics.currentPassiveIncome / 14000) * 100).toFixed(1)}%`,
+    },
+  ]
+
+  const nextActions = [
+    `Increase monthly passive income by ${formatCurrency(fireMetrics.remainingIncomeGap)} to reach the default FIRE target.`,
+    `Maintain current contribution rate of ${formatCurrency(metrics.monthlyHouseholdContributions)} per month to keep compounding momentum strong.`,
+    `Review highest-yield sleeves first when reallocating capital for better income efficiency.`,
+  ]
+
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-brand-300">Goals Engine</p>
-        <h2 className="mt-2 text-4xl font-semibold text-white">Planner</h2>
-        <p className="mt-3 max-w-3xl text-slate-400">
-          Turn strategy into action with editable household goals for liquidity, retirement, real estate, and lifestyle
-          sinking funds.
-        </p>
-      </div>
+    <div className="space-y-5 lg:space-y-6">
+      <PageHeader
+        eyebrow="Goals Engine"
+        title="Planner"
+        description="Translate your household wealth strategy into clear targets, FI progress, scenarios, and immediate next actions."
+      />
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {goals.map((goal) => {
-          const progress = calculateGoalProgress(goal)
-          return (
-            <Panel key={goal.id}>
-              <div className="flex items-center justify-between gap-4">
-                <h3 className="text-xl font-semibold text-white">{goal.title}</h3>
-                <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-200">
-                  {progress.toFixed(1)}%
-                </span>
-              </div>
-              <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
-                <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${progress}%` }} />
-              </div>
-              <div className="mt-5 space-y-3">
-                <GoalInput label="Target amount" value={goal.targetAmount} onChange={(value) => updateGoal(goal.id, 'targetAmount', value)} />
-                <GoalInput label="Current amount" value={goal.currentAmount} onChange={(value) => updateGoal(goal.id, 'currentAmount', value)} />
-                <GoalInput label="Monthly contribution" value={goal.monthlyContribution} onChange={(value) => updateGoal(goal.id, 'monthlyContribution', value)} />
-              </div>
-              <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Goal summary</p>
-                <p className="mt-2 text-sm text-slate-300">
-                  {formatCurrency(goal.currentAmount)} of {formatCurrency(goal.targetAmount)} funded with {formatCurrency(goal.monthlyContribution)}/mo going toward this goal.
-                </p>
-              </div>
-            </Panel>
-          )
-        })}
-      </div>
+      <SectionNav sections={plannerSections} />
 
-      <Panel>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-2xl font-semibold text-white">Household goals dashboard</h3>
-            <p className="mt-2 text-sm text-slate-400">Quick roll-up of live household capacity against your current goal plan.</p>
+      <section id="planner-goals" className="scroll-mt-28">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {goals.map((goal) => {
+            const progress = calculateGoalProgress(goal)
+            return (
+              <Panel key={goal.id}>
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-xl font-semibold text-white">{goal.title}</h3>
+                  <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-200">
+                    {progress.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="mt-5 space-y-3">
+                  <GoalInput label="Target amount" value={goal.targetAmount} onChange={(value) => updateGoal(goal.id, 'targetAmount', value)} />
+                  <GoalInput label="Current amount" value={goal.currentAmount} onChange={(value) => updateGoal(goal.id, 'currentAmount', value)} />
+                  <GoalInput label="Monthly contribution" value={goal.monthlyContribution} onChange={(value) => updateGoal(goal.id, 'monthlyContribution', value)} />
+                </div>
+              </Panel>
+            )
+          })}
+        </div>
+      </section>
+
+      <section id="planner-fi-progress" className="scroll-mt-28">
+        <Panel>
+          <h3 className="text-2xl font-semibold text-white">FI progress</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Track household assets, passive income, and current progress toward financial independence.</p>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <RollupCard label="Household net worth" value={formatCurrency(metrics.totalHouseholdNetWorth)} />
+            <RollupCard label="Invested assets" value={formatCurrency(metrics.totalInvestedAssets)} />
+            <RollupCard label="Current passive income" value={formatCurrency(fireMetrics.currentPassiveIncome)} />
+            <RollupCard label="FIRE coverage" value={`${(fireMetrics.coverageRatio * 100).toFixed(1)}%`} />
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-400">
-            Live planner
-          </span>
-        </div>
+        </Panel>
+      </section>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <RollupCard label="Household net worth" value={formatCurrency(metrics.totalHouseholdNetWorth)} />
-          <RollupCard label="Invested assets" value={formatCurrency(metrics.totalInvestedAssets)} />
-          <RollupCard label="Cash / savings" value={formatCurrency(metrics.totalCashSavings)} />
-          <RollupCard label="Monthly contributions" value={formatCurrency(metrics.monthlyHouseholdContributions)} />
+      <section id="planner-scenarios" className="scroll-mt-28">
+        <div className="grid gap-4 xl:grid-cols-3">
+          {scenarioCards.map((scenario) => (
+            <Panel key={scenario.title}>
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">{scenario.title}</p>
+              <p className="mt-4 text-3xl font-semibold text-white">{scenario.value}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{scenario.detail}</p>
+            </Panel>
+          ))}
         </div>
-      </Panel>
+      </section>
+
+      <section id="planner-next-actions" className="scroll-mt-28">
+        <Panel>
+          <h3 className="text-2xl font-semibold text-white">Next actions</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Suggested moves based on your live household portfolio and FIRE gap.</p>
+          <div className="mt-5 space-y-3">
+            {nextActions.map((action) => (
+              <div key={action} className="rounded-3xl border border-slate-800 bg-slate-950/60 p-4 text-sm leading-6 text-slate-300">
+                {action}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </section>
+    </div>
+  )
+}
+
+function PageHeader({ eyebrow, title, description }) {
+  return (
+    <div>
+      <p className="text-sm uppercase tracking-[0.3em] text-brand-300">{eyebrow}</p>
+      <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">{title}</h2>
+      <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">{description}</p>
     </div>
   )
 }

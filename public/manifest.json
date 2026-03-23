@@ -1,0 +1,9 @@
+{
+  "name": "WealthOS",
+  "short_name": "WealthOS",
+  "start_url": "/income-dashboard/",
+  "scope": "/income-dashboard/",
+  "display": "standalone",
+  "theme_color": "#05080f",
+  "background_color": "#05080f"
+}

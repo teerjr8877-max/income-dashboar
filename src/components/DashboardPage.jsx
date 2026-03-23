@@ -14,6 +14,14 @@ import {
 } from '../data/mockData'
 import { Panel } from '../ui/Panel'
 import { StatCard } from '../ui/StatCard'
+import { SectionNav } from './SectionNav'
+
+const dashboardSections = [
+  { id: 'dashboard-overview', label: 'Overview' },
+  { id: 'dashboard-income-engine', label: 'Income Engine' },
+  { id: 'dashboard-fire-tracker', label: 'FIRE Tracker' },
+  { id: 'dashboard-accounts-breakdown', label: 'Accounts Breakdown' },
+]
 
 export function DashboardPage({ accounts = [], cashFlow = { expenses: [] } }) {
   const metrics = calculateHouseholdMetrics(accounts, cashFlow)
@@ -133,6 +141,7 @@ export function DashboardPage({ accounts = [], cashFlow = { expenses: [] } }) {
             </div>
           </div>
         </Panel>
+      </section>
 
         <Panel>
           <SectionHeader
@@ -160,8 +169,25 @@ export function DashboardPage({ accounts = [], cashFlow = { expenses: [] } }) {
               </div>
             ))}
           </div>
-        </Panel>
-      </div>
+        </div>
+      </section>
+
+      <section id="dashboard-fire-tracker" className="space-y-5 scroll-mt-28">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm uppercase tracking-[0.24em] text-brand-300">FIRE Tracker</p>
+          <h3 className="text-2xl font-semibold text-white">Passive income coverage against your target</h3>
+          <p className="max-w-3xl text-sm leading-6 text-slate-400">
+            Default monthly FIRE target is set to {formatCurrency(fireMetrics.monthlyTarget)} with live progress driven by current portfolio income.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <StatCard title="Target Monthly Income" value={formatCurrency(fireMetrics.monthlyTarget)} change="Default" detail="Baseline monthly FIRE cash-flow target." tone="slate" />
+          <StatCard title="Current Passive Income" value={formatCurrencyPrecise(fireMetrics.currentPassiveIncome)} change={formatCurrency(fireMetrics.currentPassiveIncome * 12)} detail="Current monthly passive income from the portfolio." tone="brand" />
+          <StatCard title="Coverage Ratio" value={formatPercent(fireMetrics.coverageRatio * 100)} change={`${fireMetrics.coverageRatio.toFixed(2)}x`} detail="Current passive income divided by the target monthly income." tone="emerald" />
+          <StatCard title="Remaining Income Gap" value={formatCurrencyPrecise(fireMetrics.remainingIncomeGap)} change={formatCurrency(fireMetrics.remainingIncomeGap * 12)} detail="How much more monthly passive income is needed to hit FIRE." tone="slate" />
+          <StatCard title="Annual FIRE Target" value={formatCurrency(fireMetrics.annualFireTarget)} change="12 months" detail="Annual target derived from the monthly FIRE target." tone="slate" />
+        </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.12fr,0.88fr]">
         <Panel>
@@ -207,8 +233,8 @@ export function DashboardPage({ accounts = [], cashFlow = { expenses: [] } }) {
                 )
               })}
             </div>
-          </div>
-        </Panel>
+          </Panel>
+        </div>
 
         <Panel>
           <SectionHeader
@@ -289,7 +315,10 @@ export function DashboardPage({ accounts = [], cashFlow = { expenses: [] } }) {
             ))}
           </div>
         </Panel>
-      </div>
+      </section>
+    </div>
+  )
+}
 
       <Panel>
         <SectionHeader
@@ -367,7 +396,7 @@ function MetricPill({ label, value }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+      <p className="mt-2 text-base font-semibold text-white sm:text-lg">{value}</p>
     </div>
   )
 }
