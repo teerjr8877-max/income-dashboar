@@ -6,6 +6,7 @@ import { DashboardPage } from './components/DashboardPage.jsx'
 import { PlannerPage } from './components/PlannerPage.jsx'
 import { Sidebar } from './components/Sidebar.jsx'
 import { usePersistentAppData } from './hooks/usePersistentAppData.js'
+import { normalizeAppData } from './data/appData.js'
 
 const CURRENT_PAGE_STORAGE_KEY = 'wealthos.current-page.v1'
 const pages = { Dashboard: DashboardPage, Accounts: AccountsPage, CashFlow: CashFlowPage, Planner: PlannerPage }
@@ -45,7 +46,8 @@ export default function App() {
   const handleResetDemoData = () => window.confirm('Reset all local WealthOS data back to the demo portfolio?') && resetToDemoData()
   const handleExportData = () => {
     try {
-      const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' })
+      const safeExportSnapshot = normalizeAppData(appData)
+      const blob = new Blob([JSON.stringify(safeExportSnapshot, null, 2)], { type: 'application/json' })
       const objectUrl = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = objectUrl

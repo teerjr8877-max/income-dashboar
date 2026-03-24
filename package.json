@@ -7,6 +7,8 @@
     "dev": "python3 -m http.server 4173",
     "build": "node scripts/build.mjs",
     "preview": "python3 -m http.server -d dist 4173",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "check:guardrails": "node scripts/guardrails.mjs",
+    "check": "npm run check:guardrails"
   }
 }
