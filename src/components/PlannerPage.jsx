@@ -10,9 +10,9 @@ import { Panel } from '../ui/Panel.jsx'
 import { SectionNav } from './SectionNav.jsx'
 
 const plannerSections = [
+  { id: 'planner-monte-carlo', label: 'Monte Carlo' },
   { id: 'planner-goals', label: 'Goals' },
   { id: 'planner-fi-progress', label: 'FI Progress' },
-  { id: 'planner-monte-carlo', label: 'Monte Carlo' },
   { id: 'planner-scenarios', label: 'Scenarios' },
   { id: 'planner-next-actions', label: 'Next Actions' },
 ]
@@ -119,50 +119,11 @@ export function PlannerPage({ accounts = [], goals = [], setGoals }) {
     />
     <${SectionNav} sections=${plannerSections} />
 
-    <section id="planner-goals" className="scroll-mt-28">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        ${goals.map((goal) => {
-          const progress = calculateGoalProgress(goal)
-          return html`<${Panel} key=${goal.id}>
-            <div className="flex items-center justify-between gap-4">
-              <h3 className="text-xl font-semibold text-white">${goal.title}</h3>
-              <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-200">${progress.toFixed(1)}%</span>
-            </div>
-            <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style=${{ width: `${progress}%` }} />
-            </div>
-            <div className="mt-5 space-y-3">
-              <${GoalInput} label="Target amount" value=${goal.targetAmount} onChange=${(value) => updateGoal(goal.id, 'targetAmount', value)} />
-              <${GoalInput} label="Current amount" value=${goal.currentAmount} onChange=${(value) => updateGoal(goal.id, 'currentAmount', value)} />
-              <${GoalInput}
-                label="Monthly contribution"
-                value=${goal.monthlyContribution}
-                onChange=${(value) => updateGoal(goal.id, 'monthlyContribution', value)}
-              />
-            </div>
-          </${Panel}>`
-        })}
-      </div>
-    </section>
-
-    <section id="planner-fi-progress" className="scroll-mt-28">
-      <${Panel}>
-        <h3 className="text-2xl font-semibold text-white">FI progress</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-400">Track household assets, passive income, and current progress toward financial independence.</p>
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <${RollupCard} label="Household net worth" value=${formatCurrency(metrics.totalHouseholdNetWorth)} />
-          <${RollupCard} label="Invested assets" value=${formatCurrency(metrics.totalInvestedAssets)} />
-          <${RollupCard} label="Current passive income" value=${formatCurrency(fireMetrics.currentPassiveIncome)} />
-          <${RollupCard} label="FIRE coverage" value=${`${(fireMetrics.coverageRatio * 100).toFixed(1)}%`} />
-        </div>
-      </${Panel}>
-    </section>
-
     <section id="planner-monte-carlo" className="scroll-mt-28">
       <${Panel}>
         <h3 className="text-2xl font-semibold text-white">Monte Carlo FIRE Planner</h3>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          Stress-test the FIRE plan using scenario inputs while preserving the current app shell, build path, and shared household data model.
+          Stress-test the FIRE plan with scenario inputs and review success probability, percentile outcomes, and a plain-English readout.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -237,6 +198,45 @@ export function PlannerPage({ accounts = [], goals = [], setGoals }) {
         <div className="mt-6 rounded-3xl border border-brand-400/25 bg-brand-500/5 p-5">
           <h4 className="text-lg font-semibold text-white">Plain-English summary</h4>
           <p className="mt-2 text-sm leading-6 text-slate-200">${monteCarloSummary}</p>
+        </div>
+      </${Panel}>
+    </section>
+
+    <section id="planner-goals" className="scroll-mt-28">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        ${goals.map((goal) => {
+          const progress = calculateGoalProgress(goal)
+          return html`<${Panel} key=${goal.id}>
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-xl font-semibold text-white">${goal.title}</h3>
+              <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold text-brand-200">${progress.toFixed(1)}%</span>
+            </div>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full rounded-full bg-gradient-to-r from-brand-400 to-emerald-300" style=${{ width: `${progress}%` }} />
+            </div>
+            <div className="mt-5 space-y-3">
+              <${GoalInput} label="Target amount" value=${goal.targetAmount} onChange=${(value) => updateGoal(goal.id, 'targetAmount', value)} />
+              <${GoalInput} label="Current amount" value=${goal.currentAmount} onChange=${(value) => updateGoal(goal.id, 'currentAmount', value)} />
+              <${GoalInput}
+                label="Monthly contribution"
+                value=${goal.monthlyContribution}
+                onChange=${(value) => updateGoal(goal.id, 'monthlyContribution', value)}
+              />
+            </div>
+          </${Panel}>`
+        })}
+      </div>
+    </section>
+
+    <section id="planner-fi-progress" className="scroll-mt-28">
+      <${Panel}>
+        <h3 className="text-2xl font-semibold text-white">FI progress</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-400">Track household assets, passive income, and current progress toward financial independence.</p>
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <${RollupCard} label="Household net worth" value=${formatCurrency(metrics.totalHouseholdNetWorth)} />
+          <${RollupCard} label="Invested assets" value=${formatCurrency(metrics.totalInvestedAssets)} />
+          <${RollupCard} label="Current passive income" value=${formatCurrency(fireMetrics.currentPassiveIncome)} />
+          <${RollupCard} label="FIRE coverage" value=${`${(fireMetrics.coverageRatio * 100).toFixed(1)}%`} />
         </div>
       </${Panel}>
     </section>
