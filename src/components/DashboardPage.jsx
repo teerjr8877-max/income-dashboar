@@ -25,16 +25,34 @@ const dashboardSections = [
   { id: 'dashboard-accounts-breakdown', label: 'Accounts Breakdown' },
 ]
 
+function toArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
 export function DashboardPage({ accounts = [], cashFlow = { expenses: [] } }) {
-  const metrics = calculateHouseholdMetrics(accounts, cashFlow)
-  const fireMetrics = buildFireMetrics(accounts)
-  const holdings = flattenHoldings(accounts)
-  const forwardProjection = buildForwardIncomeProjection(accounts, 12)
-  const strategyGroups = groupIncomeByCategory(accounts)
-  const ownerIncomeGroups = groupIncomeByOwner(accounts)
-  const accountIncomeGroups = groupIncomeByAccount(accounts)
-  const contributionImpact = buildContributionImpact(metrics)
-  const snowball = buildIncomeSnowball(metrics)
+  const safeAccounts = toArray(accounts)
+  const safeCashFlow = { ...cashFlow, expenses: toArray(cashFlow?.expenses), income: toArray(cashFlow?.income) }
+  const metrics = calculateHouseholdMetrics(safeAccounts, safeCashFlow)
+  const fireMetrics = buildFireMetrics(safeAccounts)
+  const holdings = toArray(flattenHoldings(safeAccounts))
+  const forwardProjectionRaw = buildForwardIncomeProjection(safeAccounts, 12)
+  const forwardProjection = {
+    annualTotal: toFiniteNumber(forwardProjectionRaw?.annualTotal),
+    points: toArray(forwardProjectionRaw?.points).map((point, index) => ({
+      label: String(point?.label ?? `M${index + 1}`).trim() || `M${index + 1}`,
+      total: toFiniteNumber(point?.total),
+    })),
+  }
+  const strategyGroups = toArray(groupIncomeByCategory(safeAccounts)).filter((group) => group && typeof group === 'object')
+  const ownerIncomeGroups = toArray(groupIncomeByOwner(safeAccounts)).filter((group) => group && typeof group === 'object')
+  const accountIncomeGroups = toArray(groupIncomeByAccount(safeAccounts)).filter((group) => group && typeof group === 'object')
+  const contributionImpact = toArray(buildContributionImpact(metrics)).filter((item) => item && typeof item === 'object')
+  const snowball = toArray(buildIncomeSnowball(metrics)).filter((item) => item && typeof item === 'object')
   const maxForwardIncome = Math.max(...forwardProjection.points.map((point) => point.total), 1)
 
   const summaryCards = [
