@@ -1,4 +1,4 @@
-import { html, useMemo, useState } from '../lib/react.js'
+import { React, html, useMemo, useState } from '../lib/react.js'
 import {
   buildFireMetrics,
   buildFireMonteCarloSimulation,
@@ -26,58 +26,6 @@ export function PlannerPage({ accounts = [], goals = [], setGoals }) {
   const [volatilityPercent, setVolatilityPercent] = useState(12)
   const [targetIncome, setTargetIncome] = useState(fireMetrics.monthlyTarget)
   const [monthlyContribution, setMonthlyContribution] = useState(metrics.monthlyHouseholdContributions)
-
-  const simulation = useMemo(
-    () =>
-      buildFireMonteCarloSimulation(accounts, {
-        years: simulationYears,
-        expectedAnnualReturn: expectedReturnPercent / 100,
-        annualVolatility: volatilityPercent / 100,
-        monthlyTarget: targetIncome,
-        monthlyContribution,
-        incomeYieldPercent: metrics.weightedPortfolioYield / 100,
-      }),
-    [
-      accounts,
-      expectedReturnPercent,
-      metrics.weightedPortfolioYield,
-      monthlyContribution,
-      simulationYears,
-      targetIncome,
-      volatilityPercent,
-    ],
-  )
-
-  const outcomeCards = [
-    {
-      label: 'Pessimistic (P10)',
-      monthlyIncome: simulation.percentile10Income,
-      detail: '10th percentile outcome based on current assumptions.',
-    },
-    {
-      label: 'Base (P50)',
-      monthlyIncome: simulation.percentile50Income,
-      detail: 'Median expected outcome across simulation paths.',
-    },
-    {
-      label: 'Optimistic (P90)',
-      monthlyIncome: simulation.percentile90Income,
-      detail: '90th percentile outcome in stronger return environments.',
-    },
-  ]
-
-  const annualProjection = outcomeCards.map((outcome) => ({
-    ...outcome,
-    annualIncome: outcome.monthlyIncome * 12,
-  }))
-
-  const monteCarloSummary = buildMonteCarloSummary({
-    successRate: simulation.successRate,
-    years: simulation.years,
-    monthlyTarget: simulation.monthlyTarget,
-    averageHitMonth: simulation.averageHitMonth,
-    baseIncome: simulation.percentile50Income,
-  })
 
   const updateGoal = (id, field, value) => {
     setGoals((current) =>
@@ -120,86 +68,22 @@ export function PlannerPage({ accounts = [], goals = [], setGoals }) {
     <${SectionNav} sections=${plannerSections} />
 
     <section id="planner-monte-carlo" className="scroll-mt-28">
-      <${Panel}>
-        <h3 className="text-2xl font-semibold text-white">Monte Carlo FIRE Planner</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
-          Stress-test the FIRE plan with scenario inputs and review success probability, percentile outcomes, and a plain-English readout.
-        </p>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <${ScenarioInput} label="Years" min="1" max="40" value=${simulationYears} onChange=${setSimulationYears} />
-          <${ScenarioInput}
-            label="Expected return (%)"
-            min="0"
-            max="20"
-            step="0.1"
-            value=${expectedReturnPercent}
-            onChange=${setExpectedReturnPercent}
-          />
-          <${ScenarioInput}
-            label="Volatility (%)"
-            min="1"
-            max="40"
-            step="0.1"
-            value=${volatilityPercent}
-            onChange=${setVolatilityPercent}
-          />
-          <${ScenarioInput}
-            label="Target monthly income ($)"
-            min="1000"
-            max="30000"
-            step="100"
-            value=${targetIncome}
-            onChange=${setTargetIncome}
-          />
-          <${ScenarioInput}
-            label="Monthly contribution ($)"
-            min="0"
-            max="20000"
-            step="50"
-            value=${monthlyContribution}
-            onChange=${setMonthlyContribution}
-          />
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <${RollupCard} label="Success probability" value=${`${(simulation.successRate * 100).toFixed(1)}%`} />
-          <${RollupCard} label="Average monthly outcome" value=${formatCurrency(simulation.averageTerminalIncome)} />
-          <${RollupCard}
-            label="Average target hit month"
-            value=${simulation.averageHitMonth <= simulation.years * 12 ? `Month ${Math.round(simulation.averageHitMonth)}` : 'Beyond horizon'}
-          />
-          <${RollupCard} label="Simulation paths" value=${simulation.simulations.toLocaleString('en-US')} />
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          ${outcomeCards.map(
-            (outcome) => html`<${Panel} key=${outcome.label} className="border-slate-700 bg-slate-950/70">
-              <p className="text-sm uppercase tracking-[0.18em] text-slate-400">${outcome.label}</p>
-              <p className="mt-3 text-3xl font-semibold text-white">${formatCurrency(outcome.monthlyIncome)}</p>
-              <p className="mt-2 text-sm text-slate-300">${outcome.detail}</p>
-            </${Panel}>`,
-          )}
-        </div>
-
-        <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
-          <h4 className="text-lg font-semibold text-white">Retirement projection output</h4>
-          <p className="mt-1 text-sm text-slate-400">Projected annual income at year ${simulation.years} using Monte Carlo percentile outcomes.</p>
-          <div className="mt-4 space-y-3">
-            ${annualProjection.map(
-              (projection) => html`<div key=${projection.label} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
-                <span className="text-sm text-slate-300">${projection.label}</span>
-                <span className="text-sm font-semibold text-white">${formatCurrency(projection.annualIncome)} / year</span>
-              </div>`,
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-3xl border border-brand-400/25 bg-brand-500/5 p-5">
-          <h4 className="text-lg font-semibold text-white">Plain-English summary</h4>
-          <p className="mt-2 text-sm leading-6 text-slate-200">${monteCarloSummary}</p>
-        </div>
-      </${Panel}>
+      <${SectionErrorBoundary} sectionName="Monte Carlo planner">
+        <${MonteCarloSection}
+          accounts=${accounts}
+          metrics=${metrics}
+          simulationYears=${simulationYears}
+          setSimulationYears=${setSimulationYears}
+          expectedReturnPercent=${expectedReturnPercent}
+          setExpectedReturnPercent=${setExpectedReturnPercent}
+          volatilityPercent=${volatilityPercent}
+          setVolatilityPercent=${setVolatilityPercent}
+          targetIncome=${targetIncome}
+          setTargetIncome=${setTargetIncome}
+          monthlyContribution=${monthlyContribution}
+          setMonthlyContribution=${setMonthlyContribution}
+        />
+      </${SectionErrorBoundary}>
     </section>
 
     <section id="planner-goals" className="scroll-mt-28">
@@ -265,6 +149,147 @@ export function PlannerPage({ accounts = [], goals = [], setGoals }) {
       </${Panel}>
     </section>
   </div>`
+}
+
+const DEFAULT_SIMULATION = {
+  successRate: 0,
+  averageTerminalIncome: 0,
+  averageHitMonth: Number.POSITIVE_INFINITY,
+  years: 1,
+  monthlyTarget: 0,
+  simulations: 0,
+  percentile10Income: 0,
+  percentile50Income: 0,
+  percentile90Income: 0,
+}
+
+function MonteCarloSection({
+  accounts,
+  metrics,
+  simulationYears,
+  setSimulationYears,
+  expectedReturnPercent,
+  setExpectedReturnPercent,
+  volatilityPercent,
+  setVolatilityPercent,
+  targetIncome,
+  setTargetIncome,
+  monthlyContribution,
+  setMonthlyContribution,
+}) {
+  const simulation = useMemo(() => {
+    try {
+      const result = buildFireMonteCarloSimulation(accounts, {
+        years: simulationYears,
+        expectedAnnualReturn: expectedReturnPercent / 100,
+        annualVolatility: volatilityPercent / 100,
+        monthlyTarget: targetIncome,
+        monthlyContribution,
+        incomeYieldPercent: metrics.weightedPortfolioYield / 100,
+      })
+
+      return {
+        ...DEFAULT_SIMULATION,
+        ...result,
+        successRate: safeNumber(result?.successRate),
+        averageTerminalIncome: safeNumber(result?.averageTerminalIncome),
+        averageHitMonth: safeNumber(result?.averageHitMonth, Number.POSITIVE_INFINITY),
+        years: safeNumber(result?.years, simulationYears || 1),
+        monthlyTarget: safeNumber(result?.monthlyTarget, targetIncome),
+        simulations: Math.max(0, Math.round(safeNumber(result?.simulations))),
+        percentile10Income: safeNumber(result?.percentile10Income),
+        percentile50Income: safeNumber(result?.percentile50Income),
+        percentile90Income: safeNumber(result?.percentile90Income),
+      }
+    } catch (error) {
+      console.error('Monte Carlo simulation failed; using safe fallback values.', error)
+      return {
+        ...DEFAULT_SIMULATION,
+        years: Math.max(1, simulationYears),
+        monthlyTarget: Math.max(0, targetIncome),
+      }
+    }
+  }, [accounts, expectedReturnPercent, metrics.weightedPortfolioYield, monthlyContribution, simulationYears, targetIncome, volatilityPercent])
+
+  const outcomeCards = [
+    { label: 'Pessimistic (P10)', monthlyIncome: simulation.percentile10Income, detail: '10th percentile outcome based on current assumptions.' },
+    { label: 'Base (P50)', monthlyIncome: simulation.percentile50Income, detail: 'Median expected outcome across simulation paths.' },
+    { label: 'Optimistic (P90)', monthlyIncome: simulation.percentile90Income, detail: '90th percentile outcome in stronger return environments.' },
+  ]
+
+  const annualProjection = outcomeCards.map((outcome) => ({ ...outcome, annualIncome: outcome.monthlyIncome * 12 }))
+
+  const monteCarloSummary = buildMonteCarloSummary({
+    successRate: simulation.successRate,
+    years: simulation.years,
+    monthlyTarget: simulation.monthlyTarget,
+    averageHitMonth: simulation.averageHitMonth,
+    baseIncome: simulation.percentile50Income,
+  })
+
+  return html`<${Panel}>
+    <h3 className="text-2xl font-semibold text-white">Monte Carlo FIRE Planner</h3>
+    <p className="mt-2 text-sm leading-6 text-slate-400">Stress-test the FIRE plan with scenario inputs and review success probability, percentile outcomes, and a plain-English readout.</p>
+
+    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <${ScenarioInput} label="Years" min="1" max="40" value=${simulationYears} onChange=${setSimulationYears} />
+      <${ScenarioInput} label="Expected return (%)" min="0" max="20" step="0.1" value=${expectedReturnPercent} onChange=${setExpectedReturnPercent} />
+      <${ScenarioInput} label="Volatility (%)" min="1" max="40" step="0.1" value=${volatilityPercent} onChange=${setVolatilityPercent} />
+      <${ScenarioInput} label="Target monthly income ($)" min="1000" max="30000" step="100" value=${targetIncome} onChange=${setTargetIncome} />
+      <${ScenarioInput} label="Monthly contribution ($)" min="0" max="20000" step="50" value=${monthlyContribution} onChange=${setMonthlyContribution} />
+    </div>
+
+    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <${RollupCard} label="Success probability" value=${`${(simulation.successRate * 100).toFixed(1)}%`} />
+      <${RollupCard} label="Average monthly outcome" value=${formatCurrency(simulation.averageTerminalIncome)} />
+      <${RollupCard} label="Average target hit month" value=${simulation.averageHitMonth <= simulation.years * 12 ? `Month ${Math.round(simulation.averageHitMonth)}` : 'Beyond horizon'} />
+      <${RollupCard} label="Simulation paths" value=${simulation.simulations.toLocaleString('en-US')} />
+    </div>
+
+    <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      ${outcomeCards.map((outcome) => html`<${Panel} key=${outcome.label} className="border-slate-700 bg-slate-950/70"><p className="text-sm uppercase tracking-[0.18em] text-slate-400">${outcome.label}</p><p className="mt-3 text-3xl font-semibold text-white">${formatCurrency(outcome.monthlyIncome)}</p><p className="mt-2 text-sm text-slate-300">${outcome.detail}</p></${Panel}>`)}
+    </div>
+
+    <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/60 p-5">
+      <h4 className="text-lg font-semibold text-white">Retirement projection output</h4>
+      <p className="mt-1 text-sm text-slate-400">Projected annual income at year ${simulation.years} using Monte Carlo percentile outcomes.</p>
+      <div className="mt-4 space-y-3">
+        ${annualProjection.map((projection) => html`<div key=${projection.label} className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3"><span className="text-sm text-slate-300">${projection.label}</span><span className="text-sm font-semibold text-white">${formatCurrency(projection.annualIncome)} / year</span></div>`)}
+      </div>
+    </div>
+
+    <div className="mt-6 rounded-3xl border border-brand-400/25 bg-brand-500/5 p-5">
+      <h4 className="text-lg font-semibold text-white">Plain-English summary</h4>
+      <p className="mt-2 text-sm leading-6 text-slate-200">${monteCarloSummary}</p>
+    </div>
+  </${Panel}>`
+}
+
+class SectionErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error) {
+    console.error(`Planner section crashed (${this.props.sectionName ?? 'unknown section'}).`, error)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return html`<${Panel}><h3 className="text-2xl font-semibold text-white">${this.props.sectionName ?? 'This section'} is temporarily unavailable</h3><p className="mt-2 text-sm leading-6 text-slate-300">A render error occurred in this section. The rest of the planner remains available. Refresh the page to retry.</p></${Panel}>`
+    }
+
+    return this.props.children
+  }
+}
+
+function safeNumber(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback
 }
 
 function buildMonteCarloSummary({ successRate, years, monthlyTarget, averageHitMonth, baseIncome }) {
