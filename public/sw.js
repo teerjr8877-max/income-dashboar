@@ -1,8 +1,8 @@
 const CACHE_NAME = 'wealthos-cache-v1'
 const APP_SHELL = [
-  '/income-dashboard/',
-  '/income-dashboard/index.html',
-  '/income-dashboard/manifest.json',
+  '/income-dashboar/',
+  '/income-dashboar/index.html',
+  '/income-dashboar/manifest.json',
 ]
 // TODO: add app icon files to the cache list once text-only Codex flow supports shipping icon assets.
 
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache))
           return networkResponse
         })
-        .catch(() => caches.match('/income-dashboard/index.html'))
+        .catch(() => caches.match('/income-dashboar/index.html'))
     }),
   )
 })
