@@ -563,6 +563,82 @@ export function buildFireMetrics(accounts, monthlyTarget = 10000) {
   }
 }
 
+function createSeededRandom(seed) {
+  let state = Math.floor(toNumber(seed, Date.now())) % 2147483647
+  if (state <= 0) state += 2147483646
+
+  return () => {
+    state = (state * 16807) % 2147483647
+    return (state - 1) / 2147483646
+  }
+}
+
+function sampleNormal(random) {
+  const u1 = Math.max(random(), Number.EPSILON)
+  const u2 = Math.max(random(), Number.EPSILON)
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+}
+
+export function buildFireMonteCarloSimulation(accounts, options = {}) {
+  const metrics = calculateHouseholdMetrics(accounts)
+  const years = Math.max(Math.floor(toNumber(options.years, 15)), 1)
+  const simulations = Math.max(Math.floor(toNumber(options.simulations, 400)), 50)
+  const monthlyTarget = Math.max(toNumber(options.monthlyTarget, 10000), 0)
+  const expectedAnnualReturn = toNumber(options.expectedAnnualReturn, 0.07)
+  const annualVolatility = Math.max(toNumber(options.annualVolatility, 0.12), 0)
+  const incomeYieldPercent = Math.max(toNumber(options.incomeYieldPercent, metrics.weightedPortfolioYield / 100), 0)
+  const monthlyContribution = Math.max(toNumber(options.monthlyContribution, metrics.monthlyHouseholdContributions), 0)
+  const startingBalance = Math.max(toNumber(options.startingBalance, metrics.portfolioMarketValue), 0)
+  const random = createSeededRandom(options.seed ?? 42)
+  const monthCount = years * 12
+  const terminalMonthlyIncome = []
+  const hitTargetMonths = []
+
+  for (let run = 0; run < simulations; run += 1) {
+    let balance = startingBalance
+    let firstHitMonth = null
+
+    for (let month = 1; month <= monthCount; month += 1) {
+      const monthlyReturnDrift = expectedAnnualReturn / 12
+      const monthlyVolatility = annualVolatility / Math.sqrt(12)
+      const randomShock = sampleNormal(random)
+      const growthRate = Math.max(monthlyReturnDrift + randomShock * monthlyVolatility, -0.95)
+      const incomeCashFlow = balance * (incomeYieldPercent / 12)
+
+      balance = Math.max(balance * (1 + growthRate) + monthlyContribution + incomeCashFlow, 0)
+
+      const projectedMonthlyIncome = balance * (incomeYieldPercent / 12)
+      if (firstHitMonth === null && projectedMonthlyIncome >= monthlyTarget) {
+        firstHitMonth = month
+      }
+    }
+
+    terminalMonthlyIncome.push(balance * (incomeYieldPercent / 12))
+    hitTargetMonths.push(firstHitMonth)
+  }
+
+  const sortedTerminalIncome = [...terminalMonthlyIncome].sort((a, b) => a - b)
+  const percentileAt = (ratio) => {
+    const clamped = Math.min(Math.max(ratio, 0), 1)
+    const index = Math.min(Math.floor(clamped * (sortedTerminalIncome.length - 1)), sortedTerminalIncome.length - 1)
+    return Number(toNumber(sortedTerminalIncome[index]).toFixed(2))
+  }
+  const successfulRuns = hitTargetMonths.filter((month) => month !== null).length
+  const averageHitMonth = hitTargetMonths.reduce((sum, month) => sum + (month ?? monthCount + 1), 0) / simulations
+
+  return {
+    years,
+    simulations,
+    monthlyTarget: Number(monthlyTarget.toFixed(2)),
+    successRate: Number((successfulRuns / simulations).toFixed(4)),
+    percentile10Income: percentileAt(0.1),
+    percentile50Income: percentileAt(0.5),
+    percentile90Income: percentileAt(0.9),
+    averageTerminalIncome: Number((terminalMonthlyIncome.reduce((sum, value) => sum + value, 0) / simulations).toFixed(2)),
+    averageHitMonth: Number(averageHitMonth.toFixed(1)),
+  }
+}
+
 export function summarizeCashFlowRows(rows, key) {
   const map = new Map()
 
