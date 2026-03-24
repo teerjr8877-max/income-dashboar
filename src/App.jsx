@@ -11,6 +11,10 @@ import { normalizeAppData } from './data/appData.js'
 const CURRENT_PAGE_STORAGE_KEY = 'wealthos.current-page.v1'
 const pages = { Dashboard: DashboardPage, Accounts: AccountsPage, CashFlow: CashFlowPage, Planner: PlannerPage }
 
+function isValidRenderableComponent(value) {
+  return (typeof value === 'function') || (typeof value === 'string' && value.trim().length > 0)
+}
+
 export default function App() {
   const { appData, setAppData, saveState, lastSavedAt, resetToDemoData } = usePersistentAppData()
   const [currentPage, setCurrentPage] = useState(() => {
@@ -32,7 +36,8 @@ export default function App() {
   const accounts = Array.isArray(appData?.accounts) ? appData.accounts : []
   const cashFlow = appData?.cashFlow ?? { income: [], expenses: [] }
   const goals = Array.isArray(appData?.goals) ? appData.goals : []
-  const CurrentPage = pages[currentPage] ?? DashboardPage
+  const pageCandidate = pages[currentPage]
+  const CurrentPage = isValidRenderableComponent(pageCandidate) ? pageCandidate : DashboardPage
 
   const pageProps = useMemo(() => ({
     accounts,
