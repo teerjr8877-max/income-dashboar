@@ -27,25 +27,38 @@ export function createLocalStorageAdapter(storageKey = LOCAL_STORAGE_KEY) {
 
   return {
     load() {
-      const savedValue = window.localStorage.getItem(storageKey)
-      if (!savedValue) {
-        return createDemoAppData()
-      }
-
       try {
+        const savedValue = window.localStorage.getItem(storageKey)
+        if (!savedValue) {
+          return createDemoAppData()
+        }
+
         return normalizeAppData(JSON.parse(savedValue))
-      } catch {
+      } catch (error) {
+        console.error('Failed to read app data from localStorage.', error)
         return createDemoAppData()
       }
     },
     save(nextSnapshot) {
       const normalizedSnapshot = normalizeAppData(nextSnapshot)
-      window.localStorage.setItem(storageKey, JSON.stringify(normalizedSnapshot))
+
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(normalizedSnapshot))
+      } catch (error) {
+        console.error('Failed to save app data to localStorage.', error)
+      }
+
       return normalizedSnapshot
     },
     reset() {
       const demoSnapshot = createDemoAppData()
-      window.localStorage.setItem(storageKey, JSON.stringify(demoSnapshot))
+
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(demoSnapshot))
+      } catch (error) {
+        console.error('Failed to reset app data in localStorage.', error)
+      }
+
       return demoSnapshot
     },
   }
