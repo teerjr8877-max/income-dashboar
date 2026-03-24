@@ -1,4 +1,4 @@
-import { createDemoAppData, normalizeAppData } from './appData'
+import { createDemoAppData, normalizeAppData } from './appData.js'
 
 export const LOCAL_STORAGE_KEY = 'wealthos.app-data.v1'
 
